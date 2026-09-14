@@ -18,5 +18,5 @@ npx prisma migrate deploy
 node scripts/ensure-admin.mjs
 
 PORT="${PORT:-3000}"
-echo "Avvio Next.js su 0.0.0.0:${PORT}"
+echo "Avvio Next.js su 0.0.0.0:${PORT} TZ=${TZ:-unset}"
 exec npx next start --hostname 0.0.0.0 --port "$PORT"

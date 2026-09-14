@@ -1,4 +1,9 @@
-import Decimal from "decimal.js";
+import DecimalLib from "decimal.js";
+
+const Decimal =
+  typeof DecimalLib === "function"
+    ? DecimalLib
+    : (DecimalLib as { default: typeof DecimalLib }).default;
 
 Decimal.set({
   precision: 20,

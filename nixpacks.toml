@@ -1,3 +1,4 @@
 [variables]
 NIXPACKS_NODE_VERSION = "22"
 PRISMA_SKIP_POSTINSTALL_GENERATE = "true"
+TZ = "Europe/Rome"

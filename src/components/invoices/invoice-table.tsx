@@ -10,10 +10,9 @@ import {
 import { ClientTypeBadge, InvoiceStatusBadge, UrgencyBadge } from "@/components/status-badges";
 import { formatItalianDate } from "@/lib/dates/calendar-date";
 import { formatEUR } from "@/lib/money";
-import type { ClientType, InvoiceStatus } from "@/lib/domain/enums";
+import type { ClientType, InvoiceStatus, CommitmentStatus } from "@/lib/domain/enums";
 import type { CalendarDate } from "@/lib/dates/calendar-date";
 import type { InvoiceUrgency } from "@/lib/invoices/urgency";
-import type { CommitmentForecast } from "@/lib/billing/commitment";
 import { cn } from "cn";
 import { CommitmentStatusBadge } from "@/components/status-badges";
 
@@ -28,7 +27,7 @@ export type InvoiceRow = {
   amount: string;
   status: InvoiceStatus;
   urgency: InvoiceUrgency;
-  forecast: CommitmentForecast | null;
+  forecast: { status: CommitmentStatus } | null;
 };
 
 export function InvoiceTable({

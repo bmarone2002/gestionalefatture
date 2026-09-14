@@ -13,6 +13,15 @@ import { invoiceUrgency } from "@/lib/invoices/urgency";
 import { fromPrismaDate } from "@/server/mappers";
 
 export async function getDashboard() {
+  try {
+    return await loadDashboard();
+  } catch (error) {
+    console.error("Errore dashboard:", error);
+    throw error;
+  }
+}
+
+async function loadDashboard() {
   const today = todayRome();
   await ensureInvoiceHorizon(today);
 
@@ -74,7 +83,7 @@ export async function getDashboard() {
       amount: invoice.amount.toString(),
       status: invoice.status,
       urgency: invoiceUrgency(invoice.status, scheduled, today),
-      forecast,
+      forecast: forecast ? { status: forecast.status } : null,
     };
   });
 
@@ -101,7 +110,11 @@ export async function getDashboard() {
       next30,
     },
     toIssue: mappedToIssue,
-    criticalMunicipalities,
+    criticalMunicipalities: criticalMunicipalities.map(({ client, forecast }) => ({
+      id: client.id,
+      name: client.name,
+      status: forecast?.status ?? "CRITICAL",
+    })),
   };
 }
 

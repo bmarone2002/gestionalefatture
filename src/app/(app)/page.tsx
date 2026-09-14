@@ -49,14 +49,14 @@ export default async function DashboardPage() {
             <CardTitle>Comuni con impegno critico</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-2">
-            {data.criticalMunicipalities.map(({ client, forecast }) => (
+            {data.criticalMunicipalities.map((client) => (
               <Link
                 key={client.id}
                 href={`/clients/${client.id}`}
                 className="flex items-center justify-between rounded-md px-2 py-2 hover:bg-muted"
               >
                 <span className="font-medium">{client.name}</span>
-                {forecast ? <CommitmentStatusBadge status={forecast.status} /> : null}
+                <CommitmentStatusBadge status={client.status} />
               </Link>
             ))}
           </CardContent>

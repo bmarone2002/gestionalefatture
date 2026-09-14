@@ -72,13 +72,69 @@ export function toUtcDate(date: CalendarDate): Date {
 }
 
 export function todayRome(now: Date = new Date()): CalendarDate {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIMEZONE,
+  try {
+    return calendarDateFromTimeZone(now, TIMEZONE);
+  } catch (error) {
+    console.warn("Intl non calcola Europe/Rome, uso CET/CEST.", error);
+    return calendarDateFromRomeOffset(now);
+  }
+}
+
+function calendarDateFromTimeZone(now: Date, timeZone: string): CalendarDate {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(now);
-  return assertCalendarDate(parts);
+  }).formatToParts(now);
+
+  const year = digitsOf(parts, "year");
+  const month = digitsOf(parts, "month")?.padStart(2, "0");
+  const day = digitsOf(parts, "day")?.padStart(2, "0");
+  if (!year || !month || !day) {
+    throw new Error("Data non calcolabile da Intl");
+  }
+  return assertCalendarDate(`${year}-${month}-${day}`);
+}
+
+/**
+ * Fallback senza database TZ ICU: CET UTC+1 / CEST UTC+2 (regole UE).
+ * Utile su immagini Node con ICU ridotta.
+ */
+export function calendarDateFromRomeOffset(now: Date): CalendarDate {
+  const offsetHours = isEuSummerTime(now) ? 2 : 1;
+  const shifted = new Date(now.getTime() + offsetHours * 3_600_000);
+  return calendarDate(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth() + 1,
+    shifted.getUTCDate(),
+  );
+}
+
+function digitsOf(
+  parts: Intl.DateTimeFormatPart[],
+  type: Intl.DateTimeFormatPartTypes,
+): string | undefined {
+  const raw = parts.find((part) => part.type === type)?.value;
+  if (!raw) {
+    return undefined;
+  }
+  const digits = raw.replace(/\D/g, "");
+  return digits || undefined;
+}
+
+/** Ora legale UE: ultima domenica di marzo 01:00 UTC → ultima domenica di ottobre 01:00 UTC. */
+function isEuSummerTime(now: Date): boolean {
+  const year = now.getUTCFullYear();
+  const start = lastSundayUtc(year, 3, 1);
+  const end = lastSundayUtc(year, 10, 1);
+  return now.getTime() >= start.getTime() && now.getTime() < end.getTime();
+}
+
+function lastSundayUtc(year: number, month: number, hourUtc: number): Date {
+  const lastDayOfMonth = new Date(Date.UTC(year, month, 0, hourUtc, 0, 0, 0));
+  lastDayOfMonth.setUTCDate(lastDayOfMonth.getUTCDate() - lastDayOfMonth.getUTCDay());
+  return lastDayOfMonth;
 }
 
 export function formatItalianDate(date: CalendarDate): string {
@@ -117,9 +173,16 @@ export function maxCalendarDate(a: CalendarDate, b: CalendarDate): CalendarDate 
 }
 
 export function formatItalianDateTime(date: Date): string {
-  return new Intl.DateTimeFormat("it-IT", {
-    timeZone: TIMEZONE,
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
+  try {
+    return new Intl.DateTimeFormat("it-IT", {
+      timeZone: TIMEZONE,
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat("it-IT", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(date);
+  }
 }

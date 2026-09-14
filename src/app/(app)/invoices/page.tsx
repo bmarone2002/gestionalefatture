@@ -102,7 +102,7 @@ export default async function InvoicesPage({
               amount: invoice.amount.toString(),
               status: invoice.status,
               urgency: invoice.urgency,
-              forecast: invoice.forecast,
+              forecast: invoice.forecast ? { status: invoice.forecast.status } : null,
             }))}
             today={today}
           />

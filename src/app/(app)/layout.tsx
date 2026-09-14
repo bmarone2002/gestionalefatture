@@ -7,7 +7,12 @@ export const revalidate = 0;
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const alertCount = await getNavAlertCount();
+  let alertCount = 0;
+  try {
+    alertCount = await getNavAlertCount();
+  } catch (error) {
+    console.error("Errore conteggio avvisi fatture:", error);
+  }
 
   return (
     <div className="flex min-h-screen bg-[#f4f1ea]">
