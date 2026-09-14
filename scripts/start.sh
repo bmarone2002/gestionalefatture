@@ -14,6 +14,19 @@ if [ -z "$AUTH_SECRET" ]; then
   exit 1
 fi
 
+if [ -n "$AUTH_URL" ]; then
+  AUTH_URL=$(printf '%s' "$AUTH_URL" | sed 's:/*$::')
+  case "$AUTH_URL" in
+    http://*|https://*) ;;
+    *)
+      AUTH_URL="https://$AUTH_URL"
+      ;;
+  esac
+  export AUTH_URL
+  export NEXTAUTH_URL="$AUTH_URL"
+  echo "AUTH_URL=$AUTH_URL"
+fi
+
 npx prisma migrate deploy
 node scripts/ensure-admin.mjs
 

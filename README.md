@@ -93,7 +93,7 @@ Il repository è pronto per Railway (`railway.toml`, Node 22, `prisma migrate de
 | --- | --- |
 | `DATABASE_URL` | riferimento a PostgreSQL: `${{Postgres.DATABASE_URL}}` |
 | `AUTH_SECRET` | output di `openssl rand -base64 32` |
-| `AUTH_URL` | `https://<dominio-pubblico-railway>` |
+| `AUTH_URL` | `https://<dominio-pubblico-railway>` (con `https://`, senza `/` finale) |
 | `AUTH_TRUST_HOST` | `true` |
 | `SEED_ADMIN_EMAIL` | email dell’amministratore |
 | `SEED_ADMIN_PASSWORD` | password iniziale forte |

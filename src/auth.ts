@@ -3,6 +3,9 @@ import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/server/db";
+import { applyAuthUrlFromEnv } from "@/lib/auth-url";
+
+applyAuthUrlFromEnv();
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET,

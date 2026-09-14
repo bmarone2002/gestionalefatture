@@ -1,6 +1,15 @@
+import { applyAuthUrlFromEnv } from "@/lib/auth-url";
+
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") {
     return;
+  }
+
+  const authUrl = applyAuthUrlFromEnv();
+  if (authUrl) {
+    console.log(`Avvio: AUTH_URL=${authUrl}`);
+  } else {
+    console.warn("Avvio: AUTH_URL non impostata, uso l'host della richiesta.");
   }
 
   try {
