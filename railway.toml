@@ -2,7 +2,7 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "npx prisma migrate deploy && node scripts/ensure-admin.mjs && npm start"
+startCommand = "sh scripts/start.sh"
 healthcheckPath = "/login"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
