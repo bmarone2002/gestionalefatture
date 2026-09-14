@@ -2,11 +2,16 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 
 export async function getCurrentUser() {
-  const session = await auth();
-  if (!session?.user?.id) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return null;
+    }
+    return session.user;
+  } catch (error) {
+    console.error("Errore sessione:", error);
     return null;
   }
-  return session.user;
 }
 
 export async function requireUser() {

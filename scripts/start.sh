@@ -9,6 +9,11 @@ if [ -z "$DATABASE_URL" ] || echo "$DATABASE_URL" | grep -q "placeholder"; then
   exit 1
 fi
 
+if [ -z "$AUTH_SECRET" ]; then
+  echo "ERRORE: AUTH_SECRET non è impostata sul servizio web."
+  exit 1
+fi
+
 npx prisma migrate deploy
 node scripts/ensure-admin.mjs
 
