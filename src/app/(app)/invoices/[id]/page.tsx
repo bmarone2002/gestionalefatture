@@ -10,6 +10,8 @@ import { formatItalianDate, formatItalianDateTime } from "@/lib/dates/calendar-d
 import { FREQUENCY_LABELS } from "@/lib/domain/enums";
 import { todayRome } from "@/lib/dates/calendar-date";
 
+export const dynamic = "force-dynamic";
+
 export default async function InvoiceDetailPage({
   params,
 }: {

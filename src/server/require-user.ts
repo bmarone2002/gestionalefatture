@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 
 export async function getCurrentUser() {
   try {
@@ -9,6 +9,7 @@ export async function getCurrentUser() {
     }
     return session.user;
   } catch (error) {
+    unstable_rethrow(error);
     console.error("Errore sessione:", error);
     return null;
   }

@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/server/require-user";
 import { LoginForm } from "@/components/login-form";
 import { Archive } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage() {
   const user = await getCurrentUser();
   if (user) {

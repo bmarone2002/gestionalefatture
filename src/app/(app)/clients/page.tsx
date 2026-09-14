@@ -17,6 +17,8 @@ import { formatEUR, formatIntegerIT, formatUnitPrice } from "@/lib/money";
 import { formatItalianDate } from "@/lib/dates/calendar-date";
 import { FREQUENCY_LABELS } from "@/lib/domain/enums";
 
+export const dynamic = "force-dynamic";
+
 export default async function ClientsPage({
   searchParams,
 }: {

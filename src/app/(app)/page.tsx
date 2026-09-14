@@ -6,6 +6,8 @@ import { formatEUR } from "@/lib/money";
 import { buttonVariants } from "@/components/ui/button";
 import { CommitmentStatusBadge } from "@/components/status-badges";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const data = await getDashboard();
 

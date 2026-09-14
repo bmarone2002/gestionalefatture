@@ -2,6 +2,9 @@ import { requireUser } from "@/server/require-user";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { getNavAlertCount } from "@/server/services/invoices";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const alertCount = await getNavAlertCount();

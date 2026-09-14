@@ -3,6 +3,8 @@ import { getClientById } from "@/server/services/clients";
 import { ClientForm } from "@/components/clients/client-form";
 import { fromUtcDate, todayRome } from "@/lib/dates/calendar-date";
 
+export const dynamic = "force-dynamic";
+
 export default async function EditClientPage({
   params,
 }: {

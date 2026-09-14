@@ -1,6 +1,8 @@
 import { ClientForm } from "@/components/clients/client-form";
 import { todayRome } from "@/lib/dates/calendar-date";
 
+export const dynamic = "force-dynamic";
+
 export default function NewClientPage() {
   return (
     <div className="space-y-6">
