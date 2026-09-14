@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: archivia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: archivia
+      POSTGRES_PASSWORD: archivia
+      POSTGRES_DB: archivia
+    ports:
+      - "5432:5432"
+    volumes:
+      - archivia_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U archivia -d archivia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  archivia_pgdata:
