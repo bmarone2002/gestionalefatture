@@ -18,9 +18,10 @@ export default async function EditClientPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Modifica cliente</h1>
-        <p className="text-sm text-muted-foreground">
+      <div className="border-b border-border/80 pb-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">Anagrafica</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Modifica cliente</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
           Le fatture già emesse restano invariate. Eventuali modifiche a scatole, prezzo o
           periodicità valgono solo per le scadenze ancora da emettere.
         </p>

@@ -15,9 +15,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f4f1ea]">
+    <div className="flex min-h-dvh flex-col bg-background lg:flex-row">
       <AppSidebar userName={user.name ?? user.email ?? "Amministratore"} alertCount={alertCount} />
-      <main className="min-w-0 flex-1 p-6 lg:p-8">{children}</main>
+      <main className="min-w-0 flex-1 overflow-x-hidden">
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
+      </main>
     </div>
   );
 }

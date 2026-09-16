@@ -62,7 +62,7 @@ export function InvoiceTable({
         {rows.map((row) => (
           <TableRow
             key={row.id}
-            className={cn(row.urgency === "OVERDUE" && "bg-red-50 hover:bg-red-50")}
+            className={cn(row.urgency === "OVERDUE" && "bg-red-50/80 hover:bg-red-50")}
           >
             <TableCell>
               <Link href={`/invoices/${row.id}`} className="font-medium hover:underline">

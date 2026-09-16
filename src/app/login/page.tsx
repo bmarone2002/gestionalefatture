@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import { getCurrentUser } from "@/server/require-user";
 import { LoginForm } from "@/components/login-form";
-import { Archive } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -12,14 +12,33 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f4f1ea] p-6">
-      <div className="grid w-full max-w-md gap-6">
-        <div className="flex items-center justify-center gap-2 text-[#1c2b38]">
-          <Archive className="size-6" />
-          <div>
-            <div className="text-lg font-semibold">Archivia Solution</div>
-            <div className="text-sm text-muted-foreground">Gestionale stoccaggio</div>
-          </div>
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden brand-wash p-6">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 brand-grid opacity-40"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-24 top-16 size-64 rounded-full bg-brand/15 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-16 bottom-10 size-72 rounded-full bg-primary/10 blur-3xl"
+      />
+
+      <div className="relative grid w-full max-w-md gap-8">
+        <div className="flex flex-col items-center text-center">
+          <Image
+            src="/logo-archivia.png"
+            alt="Archivia Solution SpA"
+            width={220}
+            height={90}
+            priority
+            className="h-14 w-auto object-contain"
+          />
+          <p className="mt-3 text-sm text-muted-foreground">
+            Gestionale interno · fatturazione stoccaggio
+          </p>
         </div>
         <LoginForm />
       </div>

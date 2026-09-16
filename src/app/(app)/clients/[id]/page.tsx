@@ -34,9 +34,10 @@ export default async function ClientDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/80 pb-5">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{client.name}</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">Cliente</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{client.name}</h1>
           <div className="mt-2 flex items-center gap-2">
             <ClientTypeBadge type={client.type} />
             <span className="text-sm text-muted-foreground">

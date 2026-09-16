@@ -33,9 +33,12 @@ export default async function InvoiceDetailPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Fattura {invoice.client.name}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <div className="border-b border-border/80 pb-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">Fattura</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+          {invoice.client.name}
+        </h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
           {formatItalianDate(invoice.periodStartDate)} → {formatItalianDate(invoice.periodEndDate)}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">

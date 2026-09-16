@@ -16,7 +16,13 @@ import { cn } from "cn";
 
 export function ClientTypeBadge({ type }: { type: ClientType }) {
   return (
-    <Badge variant={type === "MUNICIPALITY" ? "secondary" : "outline"}>
+    <Badge
+      variant="outline"
+      className={cn(
+        "rounded-md",
+        type === "MUNICIPALITY" && "border-brand/40 bg-brand/10 text-foreground",
+      )}
+    >
       {CLIENT_TYPE_LABELS[type]}
     </Badge>
   );
@@ -24,7 +30,14 @@ export function ClientTypeBadge({ type }: { type: ClientType }) {
 
 export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
   return (
-    <Badge variant={status === "ISSUED" ? "secondary" : "outline"}>
+    <Badge
+      variant="outline"
+      className={cn(
+        "rounded-md",
+        status === "ISSUED" && "border-emerald-600/30 bg-emerald-50 text-emerald-800",
+        status === "TO_ISSUE" && "border-brand/40 bg-brand/10 text-foreground",
+      )}
+    >
       {INVOICE_STATUS_LABELS[status]}
     </Badge>
   );

@@ -33,10 +33,11 @@ export default async function InvoicesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border/80 pb-5">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Fatture</h1>
-          <p className="text-sm text-muted-foreground">Scadenziario di emissione.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">Scadenziario</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Fatture</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">Scadenziario di emissione.</p>
         </div>
         <Link
           href={`/api/invoices/export${exportQuery ? `?${exportQuery}` : ""}`}
