@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Users, FileText, Menu, LogOut, TrendingUp } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Menu, LogOut, TrendingUp, BookOpen } from "lucide-react";
 import { cn } from "cn";
 import { logoutAction } from "@/server/actions/auth";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ const links = [
   { href: "/clients", label: "Clienti", icon: Users },
   { href: "/invoices", label: "Fatture", icon: FileText },
   { href: "/istat", label: "Adeguamento ISTAT", icon: TrendingUp },
+  { href: "/manual", label: "Manuale", icon: BookOpen },
 ];
 
 function NavLinks({
