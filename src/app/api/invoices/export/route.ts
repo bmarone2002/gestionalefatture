@@ -4,7 +4,7 @@ import { listInvoicesForExport } from "@/server/services/invoices";
 import { toCsv } from "@/lib/csv";
 import { formatItalianDate, formatItalianDateTime } from "@/lib/dates/calendar-date";
 import { formatEUR } from "@/lib/money";
-import { INVOICE_STATUS_LABELS } from "@/lib/domain/enums";
+import { INVOICE_STATUS_LABELS, INVOICE_TYPE_LABELS } from "@/lib/domain/enums";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -23,16 +23,23 @@ export async function GET(request: NextRequest) {
   });
 
   const rows = [
-    ["Cliente", "Periodo", "Scadenza", "Importo", "Stato", "Data emissione", "CIG", "Determina"],
+    [
+      "Cliente", "Contratto", "Tipo documento", "Periodo", "Scadenza", "Importo IVA inclusa",
+      "Stato", "Numero esterno", "Data emissione", "CIG", "Determina", "Voci",
+    ],
     ...invoices.map((invoice) => [
       invoice.client.name,
+      invoice.contract?.name ?? "",
+      INVOICE_TYPE_LABELS[invoice.invoiceType],
       `${formatItalianDate(invoice.periodStartDate)} - ${formatItalianDate(invoice.periodEndDate)}`,
       formatItalianDate(invoice.scheduled),
       formatEUR(invoice.amount.toString()),
       INVOICE_STATUS_LABELS[invoice.status],
+      invoice.externalNumber ?? "",
       invoice.issuedAt ? formatItalianDateTime(invoice.issuedAt) : "",
-      invoice.client.cig ?? "",
-      invoice.client.determina ?? "",
+      invoice.contract?.versions[0]?.cig ?? invoice.client.cig ?? "",
+      invoice.contract?.versions[0]?.determina ?? invoice.client.determina ?? "",
+      invoice.lines.map((line) => line.description).join(" | "),
     ]),
   ];
 

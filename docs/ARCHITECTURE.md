@@ -135,3 +135,64 @@ La “prossima scadenza” è sempre la prima `TO_ISSUE` con `scheduledDate` min
 - Nessuna generazione del PDF fattura né collegamento al gestionale contabile.
 - Auth a credenziali interne, un utente seedato.
 - Horizon 24 mesi: sufficiente per l’operatività; la previsione di esaurimento oltre l’orizzonte viene calcolata in memoria dalla formula, non solo dai record.
+
+## 11. Evoluzione contratti e billing (2026-09-22)
+
+Questa sezione sostituisce i limiti MVP relativi a contratto unico e assenza di
+rettifiche. La migrazione è additiva: i campi economici legacy su `Client`
+restano temporaneamente disponibili, mentre il nuovo dominio viene popolato e
+riconciliato.
+
+### Invarianti
+
+- Un cliente può avere al massimo un contratto `STORAGE` e uno `MOVEMENTS`
+  attivi; le annualità/CIG successive sono `ContractVersion`.
+- CIG, determina e impegno sono del contratto, non dell'anagrafica cliente.
+- Tutti i prezzi e gli impegni sono IVA inclusa.
+- Ogni variazione di prezzo ha una decorrenza; righe e documenti emessi sono
+  snapshot immutabili.
+- Una fattura appartiene a un solo contratto/CIG. Stoccaggio futuro e
+  movimentazioni passate confluiscono nello stesso documento solo se
+  appartengono allo stesso contratto.
+- Il documento fiscale nasce nel gestionale contabile esterno; Archivia ne
+  registra numero, data, righe, stato e pagamenti.
+
+### Cicli di fatturazione
+
+- Stoccaggio: trimestrale solare anticipato.
+- Movimentazioni: trimestrali o semestrali posticipate; una riga aggregata per
+  servizio. Un periodo vuoto non produce righe.
+- Ingresso scatole: il mese di ingresso è incluso e viene proposta subito una
+  fattura integrativa per i mesi residui.
+- Uscita scatole: viene proposta subito una nota di credito dal mese successivo
+  all'uscita fino alla fine del trimestre già fatturato.
+- Il macero genera l'uscita; l'invio originale riduce la consistenza soltanto
+  quando l'operatore lo marca come definitivo.
+
+### Catalogo iniziale
+
+- START UP — importo fisso una tantum
+- RITIRO PRATICHE — per intervento
+- CANONE ANNUO PIATTAFORMA MONITORA DOC — canone annuale
+- SCANSIONI ON DEMAND / CON URGENZA — per pagina, prezzi autonomi
+- INVIO ORIGINALE / CON URGENZA — per spedizione, prezzi autonomi
+- MACERO — per scatola
+
+Sono consentite voci personalizzate riutilizzabili nel catalogo del cliente.
+
+### Impegno, pagamenti e ISTAT
+
+- `utilizzato = SUM(documenti ISSUED o PAID)`, includendo integrative positive
+  e note di credito negative, limitato alla versione contrattuale.
+- L'emissione effettua lock del contratto e blocca il superamento del residuo.
+- I pagamenti memorizzano data e importo; al saldo completo il documento passa
+  a `PAID`.
+- L'adeguamento ISTAT crea prima un'anteprima. La conferma genera nuove
+  `PriceVersion` con decorrenza configurata e prezzo arrotondato ai centesimi.
+
+### Migrazione e compatibilità
+
+La migrazione crea per ogni cliente esistente un contratto stoccaggio, una
+versione contrattuale, il servizio/prezzo iniziale, la consistenza iniziale e
+una `InvoiceLine` per ciascuna fattura storica. Gli identificativi di backfill
+sono deterministici e gli importi storici non vengono ricalcolati.

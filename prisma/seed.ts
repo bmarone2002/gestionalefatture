@@ -3,6 +3,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 import { planClientInvoices } from "../src/lib/billing/horizon";
 import { toUtcDate } from "../src/lib/dates/calendar-date";
 import { plannedInvoiceCreateData } from "../src/server/mappers";
+import { ensureClientBillingDomain } from "../src/server/services/legacy-billing";
 
 const prisma = new PrismaClient();
 
@@ -115,8 +116,29 @@ async function main() {
     },
   });
 
+  const catalog = [
+    ["svc_storage", "STORAGE", "STOCCAGGIO SCATOLE", "BOX", "STORAGE"],
+    ["svc_start_up", "START_UP", "START UP", "FIXED", "ONE_OFF"],
+    ["svc_ritiro_pratiche", "RITIRO_PRATICHE", "RITIRO PRATICHE", "INTERVENTION", "USAGE"],
+    ["svc_monitora_doc", "CANONE_MONITORA_DOC", "CANONE ANNUO PIATTAFORMA MONITORA DOC", "FIXED", "ANNUAL"],
+    ["svc_scansioni", "SCANSIONI_ON_DEMAND", "SCANSIONI ON DEMAND", "PAGE", "USAGE"],
+    ["svc_scansioni_urgenti", "SCANSIONI_ON_DEMAND_URGENTI", "SCANSIONI ON DEMAND CON URGENZA", "PAGE", "USAGE"],
+    ["svc_invio_originale", "INVIO_ORIGINALE", "INVIO ORIGINALE", "SHIPMENT", "USAGE"],
+    ["svc_invio_originale_urgente", "INVIO_ORIGINALE_URGENTE", "INVIO ORIGINALE CON URGENZA", "SHIPMENT", "USAGE"],
+    ["svc_macero", "MACERO", "MACERO", "BOX", "USAGE"],
+  ] as const;
+  for (const [id, code, name, unit, billingMode] of catalog) {
+    await prisma.serviceDefinition.upsert({
+      where: { id },
+      update: { code, name, unit, billingMode, standard: true, active: true },
+      create: { id, code, name, unit, billingMode, standard: true },
+    });
+  }
+
   const existing = await prisma.client.count();
   if (existing > 0) {
+    const clients = await prisma.client.findMany({ select: { id: true } });
+    for (const client of clients) await ensureClientBillingDomain(client.id);
     console.log("Dati demo già presenti. Utente admin aggiornato.");
     return;
   }
@@ -236,6 +258,9 @@ async function main() {
     extraIssued: ["2026-01-01", "2026-04-01", "2026-07-01"],
     active: false,
   });
+
+  const clients = await prisma.client.findMany({ select: { id: true } });
+  for (const client of clients) await ensureClientBillingDomain(client.id);
 
   console.log("Seed completato.");
   console.log(`Admin: ${email} / ${password}`);

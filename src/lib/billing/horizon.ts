@@ -15,7 +15,7 @@ export type PlannedInvoice = {
   billingFrequency: BillingFrequency;
   boxQuantity: number;
   monthlyPricePerBox: string;
-  months: 3 | 6;
+  months: 3 | 6 | 12;
   amount: string;
   status: InvoiceStatus;
 };

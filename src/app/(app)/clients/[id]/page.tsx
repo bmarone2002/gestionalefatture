@@ -10,6 +10,10 @@ import { formatEUR, formatIntegerIT, formatUnitPrice } from "@/lib/money";
 import { formatItalianDate, formatItalianDateTime, fromUtcDate } from "@/lib/dates/calendar-date";
 import { FREQUENCY_LABELS } from "@/lib/domain/enums";
 import { calculateInvoiceAmountForFrequency } from "@/lib/billing/amounts";
+import { listStandardServices } from "@/server/services/service-catalog";
+import { ClientBillingForms } from "@/components/billing/client-billing-forms";
+import { CONTRACT_KIND_LABELS, INVOICE_TYPE_LABELS, SERVICE_UNIT_LABELS } from "@/lib/domain/enums";
+import { todayRome } from "@/lib/dates/calendar-date";
 import {
   Table,
   TableBody,
@@ -27,7 +31,10 @@ export default async function ClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const client = await getClientById(id);
+  const [client, standardServices] = await Promise.all([
+    getClientById(id),
+    listStandardServices(),
+  ]);
   if (!client) {
     notFound();
   }
@@ -113,6 +120,137 @@ export default async function ClientDetailPage({
 
       <Card>
         <CardHeader>
+          <CardTitle>Contratti e listini</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {client.contracts.map((contract) => {
+            const latestVersion = contract.versions[0];
+            const stock = contract.stockMovements.reduce(
+              (total, movement) =>
+                total + (movement.type === "IN" ? movement.quantity : -movement.quantity),
+              0,
+            );
+            return (
+              <div key={contract.id} className="rounded-lg border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="font-medium">{contract.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {CONTRACT_KIND_LABELS[contract.kind]} · {contract.active ? "Attivo" : "Chiuso"}
+                    </div>
+                  </div>
+                  {contract.kind === "STORAGE" ? (
+                    <div className="text-sm font-medium">{formatIntegerIT(stock)} scatole</div>
+                  ) : null}
+                </div>
+                <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+                  <Row label="CIG" value={latestVersion?.cig ?? "—"} />
+                  <Row
+                    label="Impegno"
+                    value={latestVersion?.commitmentAmount
+                      ? formatEUR(latestVersion.commitmentAmount.toString())
+                      : "—"}
+                  />
+                  <Row
+                    label="Validità"
+                    value={`${formatItalianDate(fromUtcDate(contract.startDate))} → ${
+                      contract.endDate ? formatItalianDate(fromUtcDate(contract.endDate)) : "senza scadenza"
+                    }`}
+                  />
+                </div>
+                {contract.clientServices.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Servizio</TableHead>
+                        <TableHead>Unità</TableHead>
+                        <TableHead>Prezzo attuale</TableHead>
+                        <TableHead>Periodicità</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {contract.clientServices.map((service) => (
+                        <TableRow key={service.id}>
+                          <TableCell>{service.serviceDefinition.name}</TableCell>
+                          <TableCell>{SERVICE_UNIT_LABELS[service.serviceDefinition.unit]}</TableCell>
+                          <TableCell>
+                            {service.prices[0]
+                              ? formatUnitPrice(service.prices[0].unitPriceVatIncluded.toString())
+                              : "—"}
+                          </TableCell>
+                          <TableCell>
+                            {service.billingFrequency
+                              ? FREQUENCY_LABELS[service.billingFrequency]
+                              : "A richiesta"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : null}
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      <ClientBillingForms
+        clientId={client.id}
+        today={todayRome()}
+        isMunicipality={client.type === "MUNICIPALITY"}
+        contracts={client.contracts.filter((contract) => contract.active).map((contract) => ({
+          id: contract.id,
+          name: contract.name,
+          kind: contract.kind,
+        }))}
+        standardServices={standardServices.map((service) => ({
+          id: service.id,
+          name: service.name,
+          unit: service.unit,
+        }))}
+        clientServices={client.contracts.flatMap((contract) =>
+          contract.clientServices.filter((service) => service.active).map((service) => ({
+            id: service.serviceDefinition.id,
+            clientServiceId: service.id,
+            contractId: contract.id,
+            code: service.serviceDefinition.code,
+            name: service.serviceDefinition.name,
+            unit: service.serviceDefinition.unit,
+          })),
+        )}
+      />
+
+      <Card>
+        <CardHeader><CardTitle>Movimentazioni registrate</CardTitle></CardHeader>
+        <CardContent className="px-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Servizio</TableHead>
+                <TableHead>Quantità</TableHead>
+                <TableHead>Totale IVA inclusa</TableHead>
+                <TableHead>Fatturazione</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {client.contracts.flatMap((contract) => contract.clientServices)
+                .flatMap((service) => service.movements.map((movement) => (
+                  <TableRow key={movement.id}>
+                    <TableCell>{formatItalianDate(fromUtcDate(movement.occurredOn))}</TableCell>
+                    <TableCell>{service.serviceDefinition.name}</TableCell>
+                    <TableCell>{movement.quantity.toString()}</TableCell>
+                    <TableCell>{formatEUR(movement.totalVatIncluded.toString())}</TableCell>
+                    <TableCell>{movement.invoiceLineId ? "Inclusa" : "Da fatturare"}</TableCell>
+                  </TableRow>
+                )))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Storico fatture</CardTitle>
         </CardHeader>
         <CardContent className="px-0">
@@ -122,6 +260,8 @@ export default async function ClientDetailPage({
                 <TableHead>Periodo</TableHead>
                 <TableHead>Data prevista</TableHead>
                 <TableHead>Importo</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Contratto</TableHead>
                 <TableHead>Stato</TableHead>
                 <TableHead>Data emissione</TableHead>
               </TableRow>
@@ -137,6 +277,8 @@ export default async function ClientDetailPage({
                   </TableCell>
                   <TableCell>{formatItalianDate(fromUtcDate(invoice.scheduledDate))}</TableCell>
                   <TableCell>{formatEUR(invoice.amount.toString())}</TableCell>
+                  <TableCell>{INVOICE_TYPE_LABELS[invoice.invoiceType]}</TableCell>
+                  <TableCell>{invoice.contract?.name ?? "Legacy"}</TableCell>
                   <TableCell>
                     <InvoiceStatusBadge status={invoice.status} />
                   </TableCell>

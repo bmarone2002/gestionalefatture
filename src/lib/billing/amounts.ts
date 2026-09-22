@@ -17,8 +17,8 @@ export function calculateInvoiceAmount(
   if (!Number.isInteger(boxQuantity) || boxQuantity <= 0) {
     throw new Error("La quantità scatole deve essere un intero maggiore di zero");
   }
-  if (months !== 3 && months !== 6) {
-    throw new Error("Il numero di mesi deve essere 3 o 6");
+  if (months !== 3 && months !== 6 && months !== 12) {
+    throw new Error("Il numero di mesi deve essere 3, 6 o 12");
   }
   const price = money(monthlyPricePerBox);
   if (price.isNegative()) {

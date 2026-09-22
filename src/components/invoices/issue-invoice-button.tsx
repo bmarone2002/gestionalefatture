@@ -17,6 +17,8 @@ import {
 import { issueInvoiceAction } from "@/server/actions";
 import { formatEUR } from "@/lib/money";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Field } from "@/components/forms/field";
 
 export function IssueInvoiceButton({
   invoiceId,
@@ -24,12 +26,14 @@ export function IssueInvoiceButton({
   canIssue,
   remaining,
   difference,
+  today,
 }: {
   invoiceId: string;
   amount: string;
   canIssue: boolean;
   remaining?: string;
   difference?: string;
+  today: string;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -39,11 +43,18 @@ export function IssueInvoiceButton({
     invoiceAmount?: string;
     difference?: string;
   } | null>(null);
+  const [externalNumber, setExternalNumber] = useState("");
+  const [externalDate, setExternalDate] = useState(today);
 
   async function confirm() {
     setPending(true);
     setError(null);
-    const result = await issueInvoiceAction(invoiceId);
+    if (!externalNumber.trim() || !externalDate) {
+      setPending(false);
+      setError("Inserire numero e data del documento emesso nel gestionale contabile.");
+      return;
+    }
+    const result = await issueInvoiceAction(invoiceId, { externalNumber, externalDate });
     setPending(false);
     if (!result.ok) {
       setError(result.error);
@@ -97,9 +108,30 @@ export function IssueInvoiceButton({
               Confermi di voler segnare questa fattura da {formatEUR(amount)} come emessa?
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="grid gap-3">
+            <Field label="Numero documento esterno" htmlFor="externalNumber">
+              <Input
+                id="externalNumber"
+                value={externalNumber}
+                onChange={(event) => setExternalNumber(event.target.value)}
+                placeholder="Es. 42/2026"
+              />
+            </Field>
+            <Field label="Data documento esterno" htmlFor="externalDate">
+              <Input
+                id="externalDate"
+                type="date"
+                value={externalDate}
+                onChange={(event) => setExternalDate(event.target.value)}
+              />
+            </Field>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction disabled={pending} onClick={confirm}>
+            <AlertDialogAction
+              disabled={pending || !externalNumber.trim() || !externalDate}
+              onClick={confirm}
+            >
               Segna come emessa
             </AlertDialogAction>
           </AlertDialogFooter>

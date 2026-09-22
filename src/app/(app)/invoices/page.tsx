@@ -57,6 +57,7 @@ export default async function InvoicesPage({
               <option value="ALL">Tutte</option>
               <option value="TO_ISSUE">Da emettere</option>
               <option value="ISSUED">Emesse</option>
+              <option value="PAID">Pagate</option>
               <option value="OVERDUE">Scadute</option>
             </NativeSelect>
             <NativeSelect name="range" defaultValue={params.range ?? "ALL"}>
@@ -73,6 +74,7 @@ export default async function InvoicesPage({
               <option value="ALL">Tutte le periodicità</option>
               <option value="QUARTERLY">Trimestrale</option>
               <option value="SEMIANNUAL">Semestrale</option>
+              <option value="ANNUAL">Annuale</option>
             </NativeSelect>
             <NativeSelect name="clientId" defaultValue={params.clientId ?? ""}>
               <option value="">Tutti i clienti</option>
@@ -104,6 +106,8 @@ export default async function InvoicesPage({
               status: invoice.status,
               urgency: invoice.urgency,
               forecast: invoice.forecast ? { status: invoice.forecast.status } : null,
+              invoiceType: invoice.invoiceType,
+              contractName: invoice.contract?.name ?? "Legacy",
             }))}
             today={today}
           />

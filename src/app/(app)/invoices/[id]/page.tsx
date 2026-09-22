@@ -9,6 +9,17 @@ import { formatEUR, formatIntegerIT, formatUnitPrice } from "@/lib/money";
 import { formatItalianDate, formatItalianDateTime } from "@/lib/dates/calendar-date";
 import { FREQUENCY_LABELS } from "@/lib/domain/enums";
 import { todayRome } from "@/lib/dates/calendar-date";
+import { INVOICE_TYPE_LABELS, SERVICE_UNIT_LABELS } from "@/lib/domain/enums";
+import { money } from "@/lib/money";
+import { PaymentForm } from "@/components/billing/payment-form";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +41,11 @@ export default async function InvoiceDetailPage({
     invoice.status === "TO_ISSUE" && invoice.client.active && canCover;
   const difference =
     remaining != null ? remaining.minus(invoice.amount.toString()) : undefined;
+  const paidTotal = invoice.payments.reduce(
+    (sum, payment) => sum.plus(payment.amount.toString()),
+    money(0),
+  );
+  const paymentRemaining = money(invoice.amount.toString()).abs().minus(paidTotal);
 
   return (
     <div className="space-y-6">
@@ -63,6 +79,9 @@ export default async function InvoiceDetailPage({
               }
             />
             <Row label="Scadenza" value={formatItalianDate(invoice.scheduled)} />
+            <Row label="Tipo documento" value={INVOICE_TYPE_LABELS[invoice.invoiceType]} />
+            <Row label="Contratto" value={invoice.contract?.name ?? "Legacy"} />
+            <Row label="CIG" value={invoice.contractVersion?.cig ?? "—"} />
             <Row label="Periodicità" value={FREQUENCY_LABELS[invoice.billingFrequency]} />
             <Row label="Scatole (storico)" value={formatIntegerIT(invoice.boxQuantitySnapshot)} />
             <Row
@@ -76,6 +95,13 @@ export default async function InvoiceDetailPage({
               value={invoice.issuedAt ? formatItalianDateTime(invoice.issuedAt) : "—"}
             />
             <Row label="Emessa da" value={invoice.issuedBy?.name ?? "—"} />
+            <Row label="Numero esterno" value={invoice.externalNumber ?? "—"} />
+            <Row
+              label="Data documento esterno"
+              value={invoice.externalDate
+                ? formatItalianDate(invoice.externalDate.toISOString().slice(0, 10))
+                : "—"}
+            />
           </CardContent>
         </Card>
 
@@ -91,6 +117,7 @@ export default async function InvoiceDetailPage({
                 canIssue={canIssue}
                 remaining={remaining?.toFixed(2)}
                 difference={difference?.toFixed(2)}
+                today={today}
               />
             </CardContent>
           </Card>
@@ -107,6 +134,56 @@ export default async function InvoiceDetailPage({
       </div>
 
       {invoice.forecast ? <CommitmentPanel forecast={invoice.forecast} /> : null}
+
+      <Card>
+        <CardHeader><CardTitle>Voci del documento</CardTitle></CardHeader>
+        <CardContent className="px-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Descrizione</TableHead>
+                <TableHead>Quantità</TableHead>
+                <TableHead>Unità</TableHead>
+                <TableHead>Prezzo IVA inclusa</TableHead>
+                <TableHead>Importo</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invoice.lines.map((line) => (
+                <TableRow key={line.id}>
+                  <TableCell>{line.description}</TableCell>
+                  <TableCell>{line.quantity.toString()}</TableCell>
+                  <TableCell>{SERVICE_UNIT_LABELS[line.unit]}</TableCell>
+                  <TableCell>{formatUnitPrice(line.unitPriceVatIncluded.toString())}</TableCell>
+                  <TableCell>{formatEUR(line.amountVatIncluded.toString())}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {invoice.status === "ISSUED" || invoice.status === "PAID" ? (
+        <Card>
+          <CardHeader><CardTitle>Pagamenti</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            {invoice.payments.map((payment) => (
+              <Row
+                key={payment.id}
+                label={formatItalianDate(payment.paidAt.toISOString().slice(0, 10))}
+                value={formatEUR(payment.amount.toString())}
+              />
+            ))}
+            {invoice.status !== "PAID" && paymentRemaining.isPositive() ? (
+              <PaymentForm
+                invoiceId={invoice.id}
+                today={today}
+                remaining={paymentRemaining.toFixed(2)}
+              />
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

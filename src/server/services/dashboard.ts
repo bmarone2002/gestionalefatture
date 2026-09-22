@@ -29,7 +29,7 @@ async function loadDashboard() {
     prisma.client.count({ where: { active: true } }),
     prisma.invoice.findMany({
       where: { client: { active: true } },
-      include: { client: { include: { invoices: true } } },
+      include: { client: { include: { invoices: true } }, contract: true },
       orderBy: [{ scheduledDate: "asc" }, { client: { name: "asc" } }],
     }),
     prisma.client.findMany({
@@ -84,6 +84,8 @@ async function loadDashboard() {
       status: invoice.status,
       urgency: invoiceUrgency(invoice.status, scheduled, today),
       forecast: forecast ? { status: forecast.status } : null,
+      invoiceType: invoice.invoiceType,
+      contractName: invoice.contract?.name ?? "Legacy",
     };
   });
 

@@ -18,6 +18,7 @@
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
+    "db:verify-billing": "node scripts/verify-billing-migration.mjs",
     "export:backup": "sh ./scripts/backup.sh"
   },
   "prisma": {

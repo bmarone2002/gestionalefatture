@@ -1,4 +1,4 @@
-import type { BillingFrequency, InvoiceStatus } from "@/lib/domain/enums";
+import type { InvoiceStatus } from "@/lib/domain/enums";
 import {
   compareCalendarDates,
   diffCalendarDays,
@@ -12,7 +12,7 @@ export function invoiceUrgency(
   scheduledDate: CalendarDate,
   today: CalendarDate,
 ): InvoiceUrgency {
-  if (status === "ISSUED") {
+  if (status !== "TO_ISSUE") {
     return "ISSUED";
   }
   const cmp = compareCalendarDates(scheduledDate, today);

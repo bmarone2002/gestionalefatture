@@ -10,6 +10,10 @@ import { InsufficientCommitmentError } from "@/lib/billing/commitment";
 import { assertMunicipalityCanIssue, municipalityForecast } from "@/server/commitment";
 import { invoiceUrgency } from "@/lib/invoices/urgency";
 import { getCurrentPeriod, getNextPeriod } from "@/lib/billing/periods";
+import { assertCanIssueAgainstCommitment, remainingCommitment, usedCommitment } from "@/lib/billing/commitment";
+import { toPrismaDate } from "@/server/mappers";
+import { ensureClientBillingDomain } from "@/server/services/legacy-billing";
+import { billCompletedMovements } from "@/server/services/movements";
 
 export async function getNavAlertCount() {
   const today = todayRome();
@@ -41,7 +45,7 @@ export async function ensureInvoiceHorizon(today: CalendarDate = todayRome()) {
         start: fromPrismaDate(last.periodStart),
         end: fromPrismaDate(last.periodEnd),
         scheduledDate: fromPrismaDate(last.scheduledDate),
-        months: last.monthsSnapshot === 6 ? 6 : 3,
+        months: last.monthsSnapshot === 12 ? 12 : last.monthsSnapshot === 6 ? 6 : 3,
         frequency: client.billingFrequency,
         label: "",
       },
@@ -57,7 +61,9 @@ export async function ensureInvoiceHorizon(today: CalendarDate = todayRome()) {
       data: upcoming.map((item) => plannedInvoiceCreateData(client.id, item, client.createdById)),
       skipDuplicates: true,
     });
+    await ensureClientBillingDomain(client.id);
   }
+  await billCompletedMovements(today);
 }
 
 export async function listInvoices(filters: {
@@ -71,7 +77,7 @@ export async function listInvoices(filters: {
   const today = todayRome();
   const where: Prisma.InvoiceWhereInput = {
     client: {
-      active: filters.status === "ISSUED" ? undefined : true,
+      active: filters.status === "ISSUED" || filters.status === "PAID" ? undefined : true,
     },
   };
 
@@ -89,7 +95,12 @@ export async function listInvoices(filters: {
     where.client.name = { contains: filters.q, mode: "insensitive" };
   }
 
-  if (filters.status === "TO_ISSUE" || filters.status === "ISSUED") {
+  if (
+    filters.status === "TO_ISSUE" ||
+    filters.status === "ISSUED" ||
+    filters.status === "PAID" ||
+    filters.status === "CANCELLED"
+  ) {
     where.status = filters.status;
   } else if (filters.status === "OVERDUE") {
     where.status = "TO_ISSUE";
@@ -120,6 +131,9 @@ export async function listInvoices(filters: {
           invoices: true,
         },
       },
+      contract: { include: { versions: { orderBy: { versionNumber: "desc" } } } },
+      lines: { include: { serviceDefinition: true } },
+      payments: true,
     },
     orderBy: [{ scheduledDate: "asc" }, { client: { name: "asc" } }],
   });
@@ -139,6 +153,10 @@ export async function getInvoiceById(id: string) {
     where: { id },
     include: {
       client: { include: { invoices: true } },
+      contract: { include: { versions: { orderBy: { versionNumber: "desc" } } } },
+      contractVersion: true,
+      lines: { include: { serviceDefinition: true }, orderBy: { createdAt: "asc" } },
+      payments: { orderBy: { paidAt: "asc" } },
       issuedBy: { select: { name: true, email: true } },
       createdBy: { select: { name: true, email: true } },
     },
@@ -157,13 +175,20 @@ export async function getInvoiceById(id: string) {
   };
 }
 
-export async function issueInvoice(id: string, userId: string) {
+export async function issueInvoice(
+  id: string,
+  userId: string,
+  external?: { number: string; date: CalendarDate },
+) {
   try {
     return await prisma.$transaction(
       async (tx) => {
         const invoice = await tx.invoice.findUnique({
           where: { id },
-          include: { client: { include: { invoices: true } } },
+          include: {
+            client: { include: { invoices: true } },
+            contract: { include: { versions: { orderBy: { versionNumber: "desc" } } } },
+          },
         });
         if (!invoice) {
           throw new Error("Fattura non trovata");
@@ -175,12 +200,31 @@ export async function issueInvoice(id: string, userId: string) {
           throw new Error("Il cliente non è attivo");
         }
 
-        await tx.$queryRaw`SELECT id FROM "Client" WHERE id = ${invoice.clientId} FOR UPDATE`;
-
-        const latestInvoices = await tx.invoice.findMany({
-          where: { clientId: invoice.clientId },
-        });
-        assertMunicipalityCanIssue(invoice.client, latestInvoices, invoice.amount.toString());
+        if (invoice.contractId) {
+          await tx.$queryRaw`SELECT id FROM "Contract" WHERE id = ${invoice.contractId} FOR UPDATE`;
+          const latestInvoices = await tx.invoice.findMany({
+            where: {
+              contractId: invoice.contractId,
+              status: { in: ["ISSUED", "PAID"] },
+            },
+          });
+          const version = invoice.contract?.versions.find(
+            (item) =>
+              item.effectiveFrom <= invoice.scheduledDate &&
+              (item.effectiveTo == null || item.effectiveTo >= invoice.scheduledDate),
+          );
+          if (version?.commitmentAmount != null) {
+            const used = usedCommitment(latestInvoices.map((item) => item.amount.toString()));
+            const remaining = remainingCommitment(version.commitmentAmount.toString(), used);
+            assertCanIssueAgainstCommitment(remaining, invoice.amount.toString());
+          }
+        } else {
+          await tx.$queryRaw`SELECT id FROM "Client" WHERE id = ${invoice.clientId} FOR UPDATE`;
+          const latestInvoices = await tx.invoice.findMany({
+            where: { clientId: invoice.clientId },
+          });
+          assertMunicipalityCanIssue(invoice.client, latestInvoices, invoice.amount.toString());
+        }
 
         const updated = await tx.invoice.updateMany({
           where: { id, status: "TO_ISSUE" },
@@ -188,6 +232,8 @@ export async function issueInvoice(id: string, userId: string) {
             status: "ISSUED",
             issuedAt: new Date(),
             issuedById: userId,
+            externalNumber: external?.number,
+            externalDate: external ? toPrismaDate(external.date) : undefined,
           },
         });
         if (updated.count !== 1) {

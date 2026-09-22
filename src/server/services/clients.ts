@@ -15,6 +15,7 @@ import { assertCanIssueAgainstCommitment } from "@/lib/billing/commitment";
 import { fromPrismaDate, plannedInvoiceCreateData, toPrismaDate } from "@/server/mappers";
 import { municipalityForecast } from "@/server/commitment";
 import { todayRome } from "@/lib/dates/calendar-date";
+import { ensureClientBillingDomain } from "@/server/services/legacy-billing";
 
 export async function listClients(filters: {
   q?: string;
@@ -69,7 +70,24 @@ export async function getClientById(id: string) {
   const client = await prisma.client.findUnique({
     where: { id },
     include: {
-      invoices: { orderBy: { scheduledDate: "desc" } },
+      invoices: {
+        orderBy: { scheduledDate: "desc" },
+        include: { lines: { include: { serviceDefinition: true } }, payments: true, contract: true },
+      },
+      contracts: {
+        orderBy: [{ active: "desc" }, { startDate: "desc" }],
+        include: {
+          versions: { orderBy: { versionNumber: "desc" } },
+          stockMovements: { orderBy: { occurredOn: "desc" } },
+          clientServices: {
+            include: {
+              serviceDefinition: true,
+              prices: { orderBy: { effectiveFrom: "desc" } },
+              movements: { orderBy: { occurredOn: "desc" } },
+            },
+          },
+        },
+      },
       createdBy: { select: { name: true, email: true } },
     },
   });
@@ -101,7 +119,7 @@ export async function createClient(rawInput: unknown, userId: string) {
     assertCanIssueAgainstCommitment(commitment, plan.first.amount);
   }
 
-  return prisma.$transaction(
+  const client = await prisma.$transaction(
     async (tx) => {
       const client = await tx.client.create({
         data: {
@@ -138,6 +156,8 @@ export async function createClient(rawInput: unknown, userId: string) {
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   );
+  await ensureClientBillingDomain(client.id);
+  return client;
 }
 
 export async function updateClient(id: string, rawInput: unknown, userId: string) {
@@ -148,7 +168,7 @@ export async function updateClient(id: string, rawInput: unknown, userId: string
       ? parseItalianDecimal(parsed.commitmentAmount)
       : null;
 
-  return prisma.$transaction(
+  const client = await prisma.$transaction(
     async (tx) => {
       const existing = await tx.client.findUnique({
         where: { id },
@@ -187,7 +207,8 @@ export async function updateClient(id: string, rawInput: unknown, userId: string
         const lastIssued = existing.invoices
           .filter((invoice) => invoice.status === "ISSUED")
           .at(-1);
-        const months: 3 | 6 = lastIssued?.monthsSnapshot === 6 ? 6 : 3;
+        const months: 3 | 6 | 12 =
+          lastIssued?.monthsSnapshot === 12 ? 12 : lastIssued?.monthsSnapshot === 6 ? 6 : 3;
         const afterPeriod = lastIssued
           ? {
               start: fromPrismaDate(lastIssued.periodStart),
@@ -245,6 +266,8 @@ export async function updateClient(id: string, rawInput: unknown, userId: string
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   );
+  await ensureClientBillingDomain(client.id);
+  return client;
 }
 
 export async function setClientActive(id: string, active: boolean) {

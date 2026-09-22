@@ -35,6 +35,8 @@ export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
       className={cn(
         "rounded-md",
         status === "ISSUED" && "border-emerald-600/30 bg-emerald-50 text-emerald-800",
+        status === "PAID" && "border-emerald-700 bg-emerald-100 text-emerald-900",
+        status === "CANCELLED" && "border-muted-foreground/30 bg-muted text-muted-foreground",
         status === "TO_ISSUE" && "border-brand/40 bg-brand/10 text-foreground",
       )}
     >

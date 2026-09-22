@@ -19,7 +19,9 @@ export function municipalityForecast(
     return null;
   }
 
-  const issued = invoices.filter((invoice) => invoice.status === "ISSUED");
+  const issued = invoices.filter(
+    (invoice) => invoice.status === "ISSUED" || invoice.status === "PAID",
+  );
   const used = usedCommitment(issued.map((invoice) => invoice.amount.toString()));
   const upcoming = invoices
     .filter((invoice) => invoice.status === "TO_ISSUE")
@@ -53,7 +55,7 @@ export function remainingForClient(client: Client, invoices: Invoice[]) {
   }
   const used = usedCommitment(
     invoices
-      .filter((invoice) => invoice.status === "ISSUED")
+      .filter((invoice) => invoice.status === "ISSUED" || invoice.status === "PAID")
       .map((invoice) => invoice.amount.toString()),
   );
   return remainingCommitment(client.commitmentAmount.toString(), used);
@@ -72,7 +74,7 @@ function periodFromInvoice(invoice: Invoice): BillingPeriod {
     start: fromPrismaDate(invoice.periodStart),
     end: fromPrismaDate(invoice.periodEnd),
     scheduledDate: fromPrismaDate(invoice.scheduledDate),
-    months: invoice.monthsSnapshot === 6 ? 6 : 3,
+    months: invoice.monthsSnapshot === 12 ? 12 : invoice.monthsSnapshot === 6 ? 6 : 3,
     frequency: invoice.billingFrequency,
     label: "",
   };

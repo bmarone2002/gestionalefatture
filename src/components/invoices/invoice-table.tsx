@@ -10,7 +10,13 @@ import {
 import { ClientTypeBadge, InvoiceStatusBadge, UrgencyBadge } from "@/components/status-badges";
 import { formatItalianDate } from "@/lib/dates/calendar-date";
 import { formatEUR } from "@/lib/money";
-import type { ClientType, InvoiceStatus, CommitmentStatus } from "@/lib/domain/enums";
+import {
+  INVOICE_TYPE_LABELS,
+  type ClientType,
+  type InvoiceStatus,
+  type CommitmentStatus,
+  type InvoiceType,
+} from "@/lib/domain/enums";
 import type { CalendarDate } from "@/lib/dates/calendar-date";
 import type { InvoiceUrgency } from "@/lib/invoices/urgency";
 import { cn } from "cn";
@@ -28,6 +34,8 @@ export type InvoiceRow = {
   status: InvoiceStatus;
   urgency: InvoiceUrgency;
   forecast: { status: CommitmentStatus } | null;
+  invoiceType: InvoiceType;
+  contractName: string;
 };
 
 export function InvoiceTable({
@@ -51,6 +59,8 @@ export function InvoiceTable({
         <TableRow>
           <TableHead>Cliente</TableHead>
           <TableHead>Tipologia</TableHead>
+          <TableHead>Documento</TableHead>
+          <TableHead>Contratto</TableHead>
           <TableHead>Periodo</TableHead>
           <TableHead>Scadenza</TableHead>
           <TableHead>Importo</TableHead>
@@ -72,6 +82,8 @@ export function InvoiceTable({
             <TableCell>
               <ClientTypeBadge type={row.clientType} />
             </TableCell>
+            <TableCell>{INVOICE_TYPE_LABELS[row.invoiceType]}</TableCell>
+            <TableCell>{row.contractName}</TableCell>
             <TableCell>
               {formatItalianDate(row.periodStart)} → {formatItalianDate(row.periodEnd)}
             </TableCell>

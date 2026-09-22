@@ -10,7 +10,7 @@ export type BillingPeriod = {
   start: CalendarDate;
   end: CalendarDate;
   scheduledDate: CalendarDate;
-  months: 3 | 6;
+  months: 3 | 6 | 12;
   frequency: BillingFrequency;
   label: string;
 };
@@ -27,6 +27,10 @@ export function getCurrentPeriod(
   if (frequency === "QUARTERLY") {
     const quarter = (Math.ceil(parsed.month / 3) || 1) as 1 | 2 | 3 | 4;
     return quarterlyPeriod(parsed.year, quarter);
+  }
+
+  if (frequency === "ANNUAL") {
+    return annualPeriod(parsed.year);
   }
 
   const semester = parsed.month <= 6 ? 1 : 2;
@@ -47,10 +51,26 @@ export function getNextPeriod(period: BillingPeriod): BillingPeriod {
     return getCurrentPeriod(calendarDate(start.year, nextMonth, 1), "QUARTERLY");
   }
 
+  if (period.frequency === "ANNUAL") {
+    return annualPeriod(start.year + 1);
+  }
+
   if (start.month === 1) {
     return getCurrentPeriod(calendarDate(start.year, 7, 1), "SEMIANNUAL");
   }
   return getCurrentPeriod(calendarDate(start.year + 1, 1, 1), "SEMIANNUAL");
+}
+
+function annualPeriod(year: number): BillingPeriod {
+  const start = calendarDate(year, 1, 1);
+  return {
+    start,
+    end: calendarDate(year, 12, 31),
+    scheduledDate: start,
+    months: 12,
+    frequency: "ANNUAL",
+    label: `Anno ${year}`,
+  };
 }
 
 export function iteratePeriods(
