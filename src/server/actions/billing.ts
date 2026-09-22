@@ -12,6 +12,10 @@ import {
   confirmInflationAdjustments,
   createInflationPreview,
 } from "@/server/services/istat";
+import {
+  addInvoiceServiceLine,
+  removeInvoiceServiceLine,
+} from "@/server/services/invoices";
 
 function errorResult(error: unknown): ActionResult<never> {
   if (error instanceof ZodError) {
@@ -143,6 +147,37 @@ export async function confirmInflationAdjustmentsAction(
     await confirmInflationAdjustments({ adjustmentIds }, user.id);
     refreshBilling();
     return ok({ count: adjustmentIds.length });
+  } catch (error) {
+    return errorResult(error);
+  }
+}
+
+export async function addInvoiceServiceLineAction(
+  input: unknown,
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    await requireUser();
+    const line = await addInvoiceServiceLine(input);
+    const invoiceId =
+      typeof input === "object" && input && "invoiceId" in input
+        ? String(input.invoiceId)
+        : undefined;
+    refreshBilling(undefined, invoiceId);
+    return ok({ id: line.id });
+  } catch (error) {
+    return errorResult(error);
+  }
+}
+
+export async function removeInvoiceServiceLineAction(
+  lineId: string,
+  invoiceId: string,
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    await requireUser();
+    await removeInvoiceServiceLine(lineId);
+    refreshBilling(undefined, invoiceId);
+    return ok({ id: lineId });
   } catch (error) {
     return errorResult(error);
   }

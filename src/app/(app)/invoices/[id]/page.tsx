@@ -1,16 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getInvoiceById } from "@/server/services/invoices";
+import { listStandardServices } from "@/server/services/service-catalog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientTypeBadge, InvoiceStatusBadge, UrgencyBadge } from "@/components/status-badges";
 import { IssueInvoiceButton } from "@/components/invoices/issue-invoice-button";
+import { InvoiceServiceComposer } from "@/components/invoices/invoice-service-composer";
 import { CommitmentPanel } from "@/components/commitment/commitment-panel";
-import { formatEUR, formatIntegerIT, formatUnitPrice } from "@/lib/money";
-import { formatItalianDate, formatItalianDateTime } from "@/lib/dates/calendar-date";
-import { FREQUENCY_LABELS } from "@/lib/domain/enums";
-import { todayRome } from "@/lib/dates/calendar-date";
-import { INVOICE_TYPE_LABELS, SERVICE_UNIT_LABELS } from "@/lib/domain/enums";
-import { money } from "@/lib/money";
+import { formatEUR, formatIntegerIT, formatUnitPrice, money } from "@/lib/money";
+import { formatItalianDate, formatItalianDateTime, todayRome } from "@/lib/dates/calendar-date";
+import {
+  FREQUENCY_LABELS,
+  INVOICE_TYPE_LABELS,
+  SERVICE_UNIT_LABELS,
+} from "@/lib/domain/enums";
 import { PaymentForm } from "@/components/billing/payment-form";
 import {
   Table,
@@ -29,7 +32,10 @@ export default async function InvoiceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const invoice = await getInvoiceById(id);
+  const [invoice, standardServices] = await Promise.all([
+    getInvoiceById(id),
+    listStandardServices(),
+  ]);
   if (!invoice) {
     notFound();
   }
@@ -46,6 +52,33 @@ export default async function InvoiceDetailPage({
     money(0),
   );
   const paymentRemaining = money(invoice.amount.toString()).abs().minus(paidTotal);
+
+  const pricedByDefinition = new Map(
+    invoice.client.clientServices.map((service) => [
+      service.serviceDefinitionId,
+      service.prices[0]?.unitPriceVatIncluded.toString(),
+    ]),
+  );
+  const catalog = [
+    ...standardServices.map((service) => ({
+      id: service.id,
+      name: service.name,
+      unit: service.unit,
+      suggestedPrice: pricedByDefinition.get(service.id),
+    })),
+    ...invoice.client.clientServices
+      .filter(
+        (service) =>
+          service.serviceDefinition.code == null &&
+          !standardServices.some((item) => item.id === service.serviceDefinitionId),
+      )
+      .map((service) => ({
+        id: service.serviceDefinition.id,
+        name: service.serviceDefinition.name,
+        unit: service.serviceDefinition.unit,
+        suggestedPrice: service.prices[0]?.unitPriceVatIncluded.toString(),
+      })),
+  ];
 
   return (
     <div className="space-y-6">
@@ -108,9 +141,13 @@ export default async function InvoiceDetailPage({
         {invoice.status === "TO_ISSUE" ? (
           <Card>
             <CardHeader>
-              <CardTitle>Emissione</CardTitle>
+              <CardTitle>Passo 2 — Emissione</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Controlla le voci sotto, poi registra numero e data del documento
+                emesso nel gestionale contabile.
+              </p>
               <IssueInvoiceButton
                 invoiceId={invoice.id}
                 amount={invoice.amount.toString()}
@@ -134,6 +171,28 @@ export default async function InvoiceDetailPage({
       </div>
 
       {invoice.forecast ? <CommitmentPanel forecast={invoice.forecast} /> : null}
+
+      {invoice.status === "TO_ISSUE" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Preparazione documento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <InvoiceServiceComposer
+              invoiceId={invoice.id}
+              catalog={catalog}
+              lines={invoice.lines.map((line) => ({
+                id: line.id,
+                description: line.description,
+                quantity: line.quantity.toString(),
+                unit: line.unit,
+                unitPrice: line.unitPriceVatIncluded.toString(),
+                amount: line.amountVatIncluded.toString(),
+              }))}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader><CardTitle>Voci del documento</CardTitle></CardHeader>

@@ -14,6 +14,7 @@ import { assertCanIssueAgainstCommitment, remainingCommitment, usedCommitment } 
 import { toPrismaDate } from "@/server/mappers";
 import { ensureClientBillingDomain } from "@/server/services/legacy-billing";
 import { billCompletedMovements } from "@/server/services/movements";
+import { money, parseItalianDecimal, roundEuro } from "@/lib/money";
 
 export async function getNavAlertCount() {
   const today = todayRome();
@@ -152,7 +153,18 @@ export async function getInvoiceById(id: string) {
   const invoice = await prisma.invoice.findUnique({
     where: { id },
     include: {
-      client: { include: { invoices: true } },
+      client: {
+        include: {
+          invoices: true,
+          clientServices: {
+            where: { active: true },
+            include: {
+              serviceDefinition: true,
+              prices: { orderBy: { effectiveFrom: "desc" }, take: 1 },
+            },
+          },
+        },
+      },
       contract: { include: { versions: { orderBy: { versionNumber: "desc" } } } },
       contractVersion: true,
       lines: { include: { serviceDefinition: true }, orderBy: { createdAt: "asc" } },
@@ -173,6 +185,94 @@ export async function getInvoiceById(id: string) {
     urgency: invoiceUrgency(invoice.status, fromPrismaDate(invoice.scheduledDate), today),
     forecast: municipalityForecast(invoice.client, invoice.client.invoices),
   };
+}
+
+export async function addInvoiceServiceLine(rawInput: unknown) {
+  const { invoiceServiceLineSchema } = await import("@/lib/validation/billing");
+  const input = invoiceServiceLineSchema.parse(rawInput);
+  const quantity = money(input.quantity);
+  const unitPrice = input.unitPrice ? parseItalianDecimal(input.unitPrice) : null;
+  const total = input.total
+    ? parseItalianDecimal(input.total)
+    : roundEuro(quantity.mul(unitPrice!));
+  if (total.isNegative()) throw new Error("L'importo non può essere negativo");
+
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Invoice" WHERE id = ${input.invoiceId} FOR UPDATE`;
+    const invoice = await tx.invoice.findUnique({ where: { id: input.invoiceId } });
+    if (!invoice) throw new Error("Fattura non trovata");
+    if (invoice.status !== "TO_ISSUE") {
+      throw new Error("Si possono aggiungere servizi solo a documenti da emettere");
+    }
+
+    let description = input.description?.trim() ?? "";
+    let unit = input.unit ?? "FIXED";
+    let serviceDefinitionId: string | null = null;
+
+    if (input.mode === "CATALOG") {
+      const definition = await tx.serviceDefinition.findUnique({
+        where: { id: input.serviceDefinitionId },
+      });
+      if (!definition || !definition.active) {
+        throw new Error("Servizio non trovato nel catalogo");
+      }
+      description = definition.name;
+      unit = definition.unit;
+      serviceDefinitionId = definition.id;
+    } else {
+      description = input.description!.trim();
+    }
+
+    const resolvedUnitPrice = unitPrice ?? (
+      quantity.isZero() ? money(0) : total.div(quantity)
+    );
+
+    const line = await tx.invoiceLine.create({
+      data: {
+        invoiceId: invoice.id,
+        serviceDefinitionId,
+        description,
+        quantity: quantity.toFixed(3),
+        unit,
+        unitPriceVatIncluded: resolvedUnitPrice.toFixed(4),
+        periodStart: invoice.periodStart,
+        periodEnd: invoice.periodEnd,
+        amountVatIncluded: roundEuro(total).toFixed(2),
+      },
+    });
+
+    await tx.invoice.update({
+      where: { id: invoice.id },
+      data: {
+        amount: roundEuro(money(invoice.amount.toString()).plus(total)).toFixed(2),
+      },
+    });
+
+    return line;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+export async function removeInvoiceServiceLine(lineId: string) {
+  return prisma.$transaction(async (tx) => {
+    const line = await tx.invoiceLine.findUnique({
+      where: { id: lineId },
+      include: { invoice: true },
+    });
+    if (!line) throw new Error("Voce non trovata");
+    if (line.invoice.status !== "TO_ISSUE") {
+      throw new Error("Si possono rimuovere voci solo da documenti da emettere");
+    }
+    await tx.invoiceLine.delete({ where: { id: lineId } });
+    await tx.invoice.update({
+      where: { id: line.invoiceId },
+      data: {
+        amount: roundEuro(
+          money(line.invoice.amount.toString()).minus(line.amountVatIncluded.toString()),
+        ).toFixed(2),
+      },
+    });
+    return { id: lineId };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
 export async function issueInvoice(

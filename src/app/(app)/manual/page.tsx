@@ -55,6 +55,7 @@ const sections = [
     title: "Documenti di fatturazione",
     body: [
       "Tipi: ordinaria, integrativa, nota di credito.",
+      "Su ogni fattura da emettere puoi aggiungere servizi dal catalogo (con quantità e prezzo) oppure una voce libera se il servizio non è definito.",
       "Se stoccaggio e movimentazioni condividono lo stesso contratto/CIG, a inizio aprile (esempio) un unico documento può contenere lo stoccaggio aprile–giugno anticipato e le movimentazioni gennaio–marzo posticipate.",
       "Se esistono due CIG/impegni distinti, i documenti restano separati.",
       "In emissione inserisci numero e data del documento contabile esterno. Il sistema blocca l’emissione se l’impegno residuo del contratto non copre l’importo.",

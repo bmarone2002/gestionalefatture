@@ -109,3 +109,36 @@ export const inflationConfirmSchema = z.object({
   adjustmentIds: z.array(z.string().min(1)).min(1),
 });
 
+export const invoiceServiceLineSchema = z.object({
+  invoiceId: z.string().min(1),
+  mode: z.enum(["CATALOG", "CUSTOM"]),
+  serviceDefinitionId: z.string().optional(),
+  description: z.string().trim().optional(),
+  quantity: z.coerce.number().positive("Quantità obbligatoria"),
+  unit: z.enum(["FIXED", "INTERVENTION", "PAGE", "SHIPMENT", "BOX"]).optional(),
+  unitPrice: optionalText,
+  total: optionalText,
+}).superRefine((value, context) => {
+  if (value.mode === "CATALOG" && !value.serviceDefinitionId) {
+    context.addIssue({
+      code: "custom",
+      path: ["serviceDefinitionId"],
+      message: "Selezionare un servizio del catalogo",
+    });
+  }
+  if (value.mode === "CUSTOM" && !value.description) {
+    context.addIssue({
+      code: "custom",
+      path: ["description"],
+      message: "Indicare la descrizione del servizio",
+    });
+  }
+  if (!value.unitPrice && !value.total) {
+    context.addIssue({
+      code: "custom",
+      path: ["total"],
+      message: "Inserire prezzo unitario o totale",
+    });
+  }
+});
+
