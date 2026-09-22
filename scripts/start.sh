@@ -28,6 +28,7 @@ if [ -n "$AUTH_URL" ]; then
 fi
 
 npx prisma migrate deploy
+node scripts/verify-billing-migration.mjs
 node scripts/ensure-admin.mjs
 
 PORT="${PORT:-3000}"
