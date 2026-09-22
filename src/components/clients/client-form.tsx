@@ -262,6 +262,11 @@ export function ClientForm({
                   {preview ? preview.formula : "Inserire quantità, prezzo e periodicità"}
                 </div>
               </div>
+              <p className="rounded-md border border-border/80 bg-card px-3 py-2 text-xs text-muted-foreground">
+                Scansioni, ritiro pratiche, invio originale, macero, Monitora Doc e start up
+                non si configurano qui: dopo la registrazione li trovi nella scheda cliente,
+                sezione Contratti e servizi.
+              </p>
             </>
           ) : null}
 

@@ -18,6 +18,7 @@ const sections = [
     body: [
       "Ogni anagrafica (Comune o privato/fallimento) può avere al massimo due contratti attivi: uno di stoccaggio e uno di movimentazioni.",
       "CIG, determina e impegno appartengono al contratto, non al cliente. Se cambiano, crei una nuova annualità/versione: lo storico resta intatto.",
+      "La creazione cliente configura solo anagrafica e stoccaggio. Subito dopo, sulla scheda cliente, aggiungi i servizi del catalogo e le movimentazioni.",
       "Sulla scheda cliente trovi listino, consistenza scatole, movimentazioni e documenti collegati.",
     ],
   },

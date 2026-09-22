@@ -118,11 +118,33 @@ export default async function ClientDetailPage({
         </div>
       ) : null}
 
+      <div id="servizi" className="scroll-mt-6 space-y-3 border-t border-border/80 pt-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">
+            Contratti e servizi
+          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight">
+            Listini, movimentazioni e variazioni
+          </h2>
+          <p className="mt-1.5 max-w-3xl text-sm text-muted-foreground">
+            Lo stoccaggio nasce con la registrazione. Qui gestisci il secondo contratto
+            (movimentazioni), il listino cliente (START UP, ritiro pratiche, Monitora Doc,
+            scansioni, invio originale, macero) e le operazioni da fatturare.
+          </p>
+        </div>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Contratti e listini</CardTitle>
+          <CardTitle>Contratti e listini attivi</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
+          {client.contracts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nessun contratto ancora materiale. Se vedi questo messaggio dopo un deploy
+              recente, attendi il completamento della migrazione oppure ricarica la pagina.
+            </p>
+          ) : null}
           {client.contracts.map((contract) => {
             const latestVersion = contract.versions[0];
             const stock = contract.stockMovements.reduce(
@@ -194,31 +216,40 @@ export default async function ClientDetailPage({
         </CardContent>
       </Card>
 
-      <ClientBillingForms
-        clientId={client.id}
-        today={todayRome()}
-        isMunicipality={client.type === "MUNICIPALITY"}
-        contracts={client.contracts.filter((contract) => contract.active).map((contract) => ({
-          id: contract.id,
-          name: contract.name,
-          kind: contract.kind,
-        }))}
-        standardServices={standardServices.map((service) => ({
-          id: service.id,
-          name: service.name,
-          unit: service.unit,
-        }))}
-        clientServices={client.contracts.flatMap((contract) =>
-          contract.clientServices.filter((service) => service.active).map((service) => ({
-            id: service.serviceDefinition.id,
-            clientServiceId: service.id,
-            contractId: contract.id,
-            code: service.serviceDefinition.code,
-            name: service.serviceDefinition.name,
-            unit: service.serviceDefinition.unit,
-          })),
-        )}
-      />
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-base font-semibold tracking-tight">Operazioni sul cliente</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Aggiungi servizi al listino, registra una movimentazione, varia le scatole
+            oppure crea un contratto movimentazioni separato con CIG proprio.
+          </p>
+        </div>
+        <ClientBillingForms
+          clientId={client.id}
+          today={todayRome()}
+          isMunicipality={client.type === "MUNICIPALITY"}
+          contracts={client.contracts.filter((contract) => contract.active).map((contract) => ({
+            id: contract.id,
+            name: contract.name,
+            kind: contract.kind,
+          }))}
+          standardServices={standardServices.map((service) => ({
+            id: service.id,
+            name: service.name,
+            unit: service.unit,
+          }))}
+          clientServices={client.contracts.flatMap((contract) =>
+            contract.clientServices.filter((service) => service.active).map((service) => ({
+              id: service.serviceDefinition.id,
+              clientServiceId: service.id,
+              contractId: contract.id,
+              code: service.serviceDefinition.code,
+              name: service.serviceDefinition.name,
+              unit: service.serviceDefinition.unit,
+            })),
+          )}
+        />
+      </div>
 
       <Card>
         <CardHeader><CardTitle>Movimentazioni registrate</CardTitle></CardHeader>

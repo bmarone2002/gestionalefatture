@@ -10,7 +10,9 @@ export default function NewClientPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">Anagrafica</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Nuovo cliente</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          La registrazione emette automaticamente la prima fattura del periodo corrente.
+          Qui configuri anagrafica e stoccaggio. Dopo il salvataggio, sulla scheda
+          cliente aggiungi i servizi (scansioni, ritiro, invio originale, macero,
+          Monitora Doc, start up) e le movimentazioni.
         </p>
       </div>
       <ClientForm mode="create" today={todayRome()} />

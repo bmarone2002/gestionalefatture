@@ -243,7 +243,13 @@ export function ClientBillingForms({
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Aggiungi servizio al listino</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Aggiungi servizio al listino</CardTitle>
+            <p className="text-sm font-normal text-muted-foreground">
+              START UP, ritiro pratiche, Monitora Doc, scansioni, invio originale, macero
+              o una voce personalizzata. Poi potrai registrarne le quantità da fatturare.
+            </p>
+          </CardHeader>
           <CardContent>
             <form
               className="grid gap-3"
