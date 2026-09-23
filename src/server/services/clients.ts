@@ -16,6 +16,7 @@ import { fromPrismaDate, plannedInvoiceCreateData, toPrismaDate } from "@/server
 import { municipalityForecast } from "@/server/commitment";
 import { todayRome } from "@/lib/dates/calendar-date";
 import { ensureClientBillingDomain } from "@/server/services/legacy-billing";
+import { attachRegistrationServices } from "@/server/services/service-catalog";
 
 export async function listClients(filters: {
   q?: string;
@@ -157,6 +158,9 @@ export async function createClient(rawInput: unknown, userId: string) {
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   );
   await ensureClientBillingDomain(client.id);
+  if (parsed.selectedServices.length > 0) {
+    await attachRegistrationServices(client.id, parsed.selectedServices);
+  }
   return client;
 }
 

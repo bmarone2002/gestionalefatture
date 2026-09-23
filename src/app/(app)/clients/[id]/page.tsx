@@ -246,6 +246,7 @@ export default async function ClientDetailPage({
               code: service.serviceDefinition.code,
               name: service.serviceDefinition.name,
               unit: service.serviceDefinition.unit,
+              unitPrice: service.prices[0]?.unitPriceVatIncluded.toString(),
             })),
           )}
         />

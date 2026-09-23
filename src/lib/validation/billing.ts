@@ -77,14 +77,6 @@ export const serviceMovementSchema = z.object({
   total: optionalText,
   permanentStockExit: z.boolean().default(false),
   stockQuantity: z.coerce.number().int().positive().optional(),
-}).superRefine((value, context) => {
-  if (!value.unitPrice && !value.total) {
-    context.addIssue({
-      code: "custom",
-      path: ["total"],
-      message: "Inserire prezzo unitario o totale",
-    });
-  }
 });
 
 export const issueDocumentSchema = z.object({

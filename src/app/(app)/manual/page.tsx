@@ -18,8 +18,8 @@ const sections = [
     body: [
       "Ogni anagrafica (Comune o privato/fallimento) può avere al massimo due contratti attivi: uno di stoccaggio e uno di movimentazioni.",
       "CIG, determina e impegno appartengono al contratto, non al cliente. Se cambiano, crei una nuova annualità/versione: lo storico resta intatto.",
-      "La creazione cliente configura solo anagrafica e stoccaggio. Subito dopo, sulla scheda cliente, aggiungi i servizi del catalogo e le movimentazioni.",
-      "Sulla scheda cliente trovi listino, consistenza scatole, movimentazioni e documenti collegati.",
+      "In Nuovo cliente, dopo anagrafica e stoccaggio, scegli i servizi a listino (scansioni, ritiro, invio, macero, Monitora Doc, start up o voce libera) con il relativo prezzo.",
+      "Sulla scheda cliente puoi ancora aggiungere servizi, cambiare prezzi, registrare movimentazioni e gestire i contratti.",
     ],
   },
   {
@@ -46,7 +46,7 @@ const sections = [
     body: [
       "Servizi standard: START UP (una tantum), RITIRO PRATICHE (per intervento), CANONE ANNUO MONITORA DOC, SCANSIONI ON DEMAND / CON URGENZA (per pagina), INVIO ORIGINALE / CON URGENZA (per spedizione), MACERO (per scatola).",
       "Ogni cliente ha prezzi propri con data di decorrenza. Le urgenze hanno listino autonomo, non un supplemento calcolato.",
-      "Puoi salvare voci personalizzate nel catalogo del cliente. Ogni registrazione ammette quantità × prezzo oppure totale diretto.",
+      "Per registrare una movimentazione serve almeno un servizio a listino oltre allo stoccaggio. Se non indichi il prezzo, viene usato quello del listino.",
       "Le movimentazioni sono posticipate: a inizio trimestre successivo (o semestre, se configurato) vengono aggregate in una riga per servizio. Se nel periodo non c’è nulla, non nasce alcuna voce.",
     ],
   },

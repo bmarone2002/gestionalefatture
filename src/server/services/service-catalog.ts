@@ -11,6 +11,42 @@ export async function listStandardServices() {
   });
 }
 
+export async function attachRegistrationServices(
+  clientId: string,
+  services: Array<{
+    serviceDefinitionId?: string;
+    customName?: string;
+    unit?: "FIXED" | "INTERVENTION" | "PAGE" | "SHIPMENT" | "BOX";
+    unitPrice: string;
+    billingFrequency?: "QUARTERLY" | "SEMIANNUAL" | "ANNUAL";
+  }>,
+) {
+  if (services.length === 0) return;
+  const contract = await prisma.contract.findFirst({
+    where: { clientId, kind: "STORAGE", active: true },
+  });
+  if (!contract) throw new Error("Contratto stoccaggio non trovato");
+  const registrationDate = await prisma.client.findUniqueOrThrow({
+    where: { id: clientId },
+    select: { registrationDate: true },
+  });
+  const effectiveFrom = registrationDate.registrationDate.toISOString().slice(0, 10);
+
+  for (const service of services) {
+    await addClientService({
+      clientId,
+      contractId: contract.id,
+      serviceDefinitionId: service.serviceDefinitionId,
+      customName: service.customName,
+      unit: service.unit ?? "FIXED",
+      billingMode: "USAGE",
+      billingFrequency: service.billingFrequency ?? "QUARTERLY",
+      unitPrice: service.unitPrice,
+      effectiveFrom,
+    });
+  }
+}
+
 export async function addClientService(rawInput: unknown) {
   const input = clientServiceSchema.parse(rawInput);
   const price = parseItalianDecimal(input.unitPrice);

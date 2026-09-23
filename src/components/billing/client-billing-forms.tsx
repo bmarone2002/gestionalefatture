@@ -25,6 +25,7 @@ type ClientServiceOption = ServiceOption & {
   clientServiceId: string;
   contractId: string;
   code: string | null;
+  unitPrice?: string;
 };
 
 export function ClientBillingForms({
@@ -67,6 +68,16 @@ export function ClientBillingForms({
   const storageContract = contracts.find((contract) => contract.kind === "STORAGE");
   const movementContract = contracts.find((contract) => contract.kind === "MOVEMENTS");
   const defaultServiceContract = movementContract ?? storageContract;
+  const billableServices = clientServices.filter((service) => service.code !== "STORAGE");
+  const [selectedMovementServiceId, setSelectedMovementServiceId] = useState<string | null>(null);
+  const resolvedMovementServiceId =
+    selectedMovementServiceId &&
+    billableServices.some((service) => service.clientServiceId === selectedMovementServiceId)
+      ? selectedMovementServiceId
+      : (billableServices[0]?.clientServiceId ?? "");
+  const selectedMovement = billableServices.find(
+    (service) => service.clientServiceId === resolvedMovementServiceId,
+  );
 
   return (
     <div className="space-y-4">
@@ -374,15 +385,27 @@ export function ClientBillingForms({
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Registra movimentazione</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Registra movimentazione</CardTitle>
+            <p className="text-sm font-normal text-muted-foreground">
+              Usa un servizio già a listino. Se il prezzo è vuoto, viene preso dal listino.
+            </p>
+          </CardHeader>
           <CardContent>
+            {billableServices.length === 0 ? (
+              <p className="rounded-md bg-muted px-3 py-3 text-sm text-muted-foreground">
+                Nessun servizio a listino oltre allo stoccaggio. Aggiungilo sopra
+                (“Aggiungi servizio al listino”) oppure selezionalo in fase di
+                registrazione del cliente.
+              </p>
+            ) : (
             <form
               className="grid gap-3"
               onSubmit={(event) => {
                 event.preventDefault();
                 const form = event.currentTarget;
                 const data = new FormData(form);
-                const selected = clientServices.find(
+                const selected = billableServices.find(
                   (service) => service.clientServiceId === data.get("clientServiceId"),
                 );
                 void submit(
@@ -391,7 +414,7 @@ export function ClientBillingForms({
                     occurredOn: data.get("occurredOn"),
                     description: data.get("description") || undefined,
                     quantity: Number(data.get("quantity")),
-                    unitPrice: data.get("unitPrice") || undefined,
+                    unitPrice: data.get("unitPrice") || selected?.unitPrice || undefined,
                     total: data.get("total") || undefined,
                     permanentStockExit: data.get("permanentStockExit") === "on",
                     stockQuantity: data.get("stockQuantity")
@@ -404,10 +427,17 @@ export function ClientBillingForms({
               }}
             >
               <Field label="Servizio" htmlFor="movement-service">
-                <NativeSelect id="movement-service" name="clientServiceId" required>
-                  {clientServices.filter((service) => service.code !== "STORAGE").map((service) => (
+                <NativeSelect
+                  id="movement-service"
+                  name="clientServiceId"
+                  required
+                  value={resolvedMovementServiceId}
+                  onChange={(event) => setSelectedMovementServiceId(event.target.value)}
+                >
+                  {billableServices.map((service) => (
                     <option key={service.clientServiceId} value={service.clientServiceId}>
                       {service.name}
+                      {service.unitPrice ? ` · € ${service.unitPrice}` : ""}
                     </option>
                   ))}
                 </NativeSelect>
@@ -419,8 +449,18 @@ export function ClientBillingForms({
                 <Field label="Quantità" htmlFor="movement-quantity">
                   <Input id="movement-quantity" name="quantity" type="number" min="0.001" step="0.001" required />
                 </Field>
-                <Field label="Prezzo unitario (facoltativo)" htmlFor="movement-price">
-                  <Input id="movement-price" name="unitPrice" inputMode="decimal" />
+                <Field
+                  label="Prezzo unitario"
+                  htmlFor="movement-price"
+                  hint="Se vuoto, usa il listino"
+                >
+                  <Input
+                    id="movement-price"
+                    name="unitPrice"
+                    inputMode="decimal"
+                    key={resolvedMovementServiceId}
+                    defaultValue={selectedMovement?.unitPrice ?? ""}
+                  />
                 </Field>
               </div>
               <Field label="Totale diretto (alternativo)" htmlFor="movement-total">
@@ -436,8 +476,9 @@ export function ClientBillingForms({
               <Field label="Scatole in uscita (macero/consegna definitiva)" htmlFor="movement-stock">
                 <Input id="movement-stock" name="stockQuantity" type="number" min="1" />
               </Field>
-              <Button disabled={pending || clientServices.length === 0}>Registra servizio</Button>
+              <Button disabled={pending}>Registra servizio</Button>
             </form>
+            )}
           </CardContent>
         </Card>
       </div>

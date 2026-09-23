@@ -13,8 +13,8 @@ import { planClientInvoices } from "@/lib/billing/horizon";
 import { remainingCommitment } from "@/lib/billing/commitment";
 import { formatEUR, parseItalianDecimal } from "@/lib/money";
 import { formatItalianDate } from "@/lib/dates/calendar-date";
-import type { BillingFrequency, ClientType } from "@/lib/domain/enums";
-import { FREQUENCY_LABELS, CLIENT_TYPE_LABELS } from "@/lib/domain/enums";
+import type { BillingFrequency, ClientType, ServiceUnit } from "@/lib/domain/enums";
+import { FREQUENCY_LABELS, CLIENT_TYPE_LABELS, SERVICE_UNIT_LABELS } from "@/lib/domain/enums";
 
 export type ClientFormValues = {
   name: string;
@@ -30,6 +30,14 @@ export type ClientFormValues = {
   cig: string;
   commitmentAmount: string;
 };
+
+type CatalogService = {
+  id: string;
+  name: string;
+  unit: ServiceUnit;
+};
+
+type SelectedCatalog = Record<string, { enabled: boolean; price: string }>;
 
 const emptyValues = (today: string): ClientFormValues => ({
   name: "",
@@ -51,11 +59,13 @@ export function ClientForm({
   today,
   clientId,
   initialValues,
+  standardServices = [],
 }: {
   mode: "create" | "edit";
   today: string;
   clientId?: string;
   initialValues?: Partial<ClientFormValues>;
+  standardServices?: CatalogService[];
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -66,12 +76,50 @@ export function ClientForm({
     ...emptyValues(today),
     ...initialValues,
   });
+  const [catalogSelection, setCatalogSelection] = useState<SelectedCatalog>(() =>
+    Object.fromEntries(
+      standardServices.map((service) => [service.id, { enabled: false, price: "" }]),
+    ),
+  );
+  const [customName, setCustomName] = useState("");
+  const [customPrice, setCustomPrice] = useState("");
+  const [customUnit, setCustomUnit] = useState<ServiceUnit>("FIXED");
 
   const isMunicipality = values.type === "MUNICIPALITY";
-  const steps = isMunicipality
-    ? ["Cliente", "Servizio", "Dati Comune", "Riepilogo"]
-    : ["Cliente", "Servizio", "Riepilogo"];
+  const steps = useMemo(() => {
+    const list = ["Cliente", "Stoccaggio"];
+    if (mode === "create") list.push("Altri servizi");
+    if (isMunicipality) list.push("Dati Comune");
+    list.push("Riepilogo");
+    return list;
+  }, [mode, isMunicipality]);
   const lastStep = steps.length - 1;
+  const currentStep = steps[step] ?? "Cliente";
+
+  const selectedServicesPayload = useMemo(() => {
+    const selected: Array<{
+      serviceDefinitionId?: string;
+      customName?: string;
+      unit?: ServiceUnit;
+      unitPrice: string;
+      billingFrequency: "QUARTERLY";
+    }> = Object.entries(catalogSelection)
+      .filter(([, value]) => value.enabled && value.price.trim())
+      .map(([serviceDefinitionId, value]) => ({
+        serviceDefinitionId,
+        unitPrice: value.price,
+        billingFrequency: "QUARTERLY" as const,
+      }));
+    if (customName.trim() && customPrice.trim()) {
+      selected.push({
+        customName: customName.trim(),
+        unit: customUnit,
+        unitPrice: customPrice,
+        billingFrequency: "QUARTERLY",
+      });
+    }
+    return selected;
+  }, [catalogSelection, customName, customPrice, customUnit]);
 
   const preview = useMemo(() => {
     const quantity = Number(values.boxQuantity);
@@ -122,6 +170,7 @@ export function ClientForm({
       determina: isMunicipality ? values.determina : undefined,
       cig: isMunicipality ? values.cig : undefined,
       commitmentAmount: isMunicipality ? values.commitmentAmount : undefined,
+      selectedServices: mode === "create" ? selectedServicesPayload : [],
     };
     const result =
       mode === "create"
@@ -139,7 +188,7 @@ export function ClientForm({
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <ol className="flex gap-2 text-sm">
+      <ol className="flex flex-wrap gap-2 text-sm">
         {steps.map((label, index) => (
           <li
             key={label}
@@ -157,10 +206,10 @@ export function ClientForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>{steps[step]}</CardTitle>
+          <CardTitle>{currentStep}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
-          {step === 0 ? (
+          {currentStep === "Cliente" ? (
             <>
               <Field label="Denominazione" htmlFor="name" error={fieldErrors.name?.[0]}>
                 <Input
@@ -207,7 +256,7 @@ export function ClientForm({
                 htmlFor="registrationDate"
                 hint={
                   mode === "create"
-                    ? "La registrazione emette automaticamente la prima fattura del periodo corrente."
+                    ? "La registrazione emette automaticamente la prima fattura di stoccaggio del periodo corrente."
                     : "La data di registrazione non modifica le fatture già emesse."
                 }
               >
@@ -222,7 +271,7 @@ export function ClientForm({
             </>
           ) : null}
 
-          {step === 1 ? (
+          {currentStep === "Stoccaggio" ? (
             <>
               <Field label="Quantità scatole" htmlFor="boxQuantity" error={fieldErrors.boxQuantity?.[0]}>
                 <Input
@@ -233,7 +282,7 @@ export function ClientForm({
                 />
               </Field>
               <Field
-                label="Prezzo mensile per scatola (€)"
+                label="Prezzo mensile per scatola (€) IVA inclusa"
                 htmlFor="monthlyPricePerBox"
                 hint="Esempio: 0,50"
                 error={fieldErrors.monthlyPricePerBox?.[0]}
@@ -244,7 +293,7 @@ export function ClientForm({
                   onChange={(event) => update("monthlyPricePerBox", event.target.value)}
                 />
               </Field>
-              <Field label="Periodicità" htmlFor="billingFrequency">
+              <Field label="Periodicità stoccaggio" htmlFor="billingFrequency">
                 <NativeSelect
                   id="billingFrequency"
                   value={values.billingFrequency}
@@ -257,20 +306,115 @@ export function ClientForm({
                 </NativeSelect>
               </Field>
               <div className="rounded-lg bg-muted px-3 py-3 text-sm">
-                <div className="text-muted-foreground">Importo previsto per ogni fattura</div>
+                <div className="text-muted-foreground">Importo previsto per ogni fattura di stoccaggio</div>
                 <div className="mt-1 font-medium">
                   {preview ? preview.formula : "Inserire quantità, prezzo e periodicità"}
                 </div>
               </div>
-              <p className="rounded-md border border-border/80 bg-card px-3 py-2 text-xs text-muted-foreground">
-                Scansioni, ritiro pratiche, invio originale, macero, Monitora Doc e start up
-                non si configurano qui: dopo la registrazione li trovi nella scheda cliente,
-                sezione Contratti e servizi.
-              </p>
             </>
           ) : null}
 
-          {isMunicipality && step === 2 ? (
+          {currentStep === "Altri servizi" ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Attiva i servizi che vuoi avere a listino per questo cliente e indica
+                il prezzo IVA inclusa. Potrai registrarne le quantità nelle movimentazioni
+                o aggiungerli anche in preparazione fattura.
+              </p>
+              <div className="space-y-3">
+                {standardServices.map((service) => {
+                  const selection = catalogSelection[service.id] ?? { enabled: false, price: "" };
+                  return (
+                    <div
+                      key={service.id}
+                      className="grid gap-3 rounded-lg border px-3 py-3 sm:grid-cols-[auto_1fr_160px] sm:items-center"
+                    >
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        <input
+                          type="checkbox"
+                          checked={selection.enabled}
+                          onChange={(event) =>
+                            setCatalogSelection((current) => ({
+                              ...current,
+                              [service.id]: {
+                                enabled: event.target.checked,
+                                price: current[service.id]?.price ?? "",
+                              },
+                            }))
+                          }
+                        />
+                        {service.name}
+                      </label>
+                      <span className="text-xs text-muted-foreground">
+                        {SERVICE_UNIT_LABELS[service.unit]}
+                      </span>
+                      <Input
+                        inputMode="decimal"
+                        placeholder="Prezzo"
+                        disabled={!selection.enabled}
+                        value={selection.price}
+                        onChange={(event) =>
+                          setCatalogSelection((current) => ({
+                            ...current,
+                            [service.id]: {
+                              enabled: true,
+                              price: event.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="grid gap-3 rounded-lg border border-dashed px-3 py-3">
+                <p className="text-sm font-medium">Voce libera (opzionale)</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field label="Descrizione" htmlFor="custom-service-name">
+                    <Input
+                      id="custom-service-name"
+                      value={customName}
+                      onChange={(event) => setCustomName(event.target.value)}
+                      placeholder="Es. Servizio straordinario"
+                    />
+                  </Field>
+                  <Field label="Unità" htmlFor="custom-service-unit">
+                    <NativeSelect
+                      id="custom-service-unit"
+                      value={customUnit}
+                      onChange={(event) => setCustomUnit(event.target.value as ServiceUnit)}
+                    >
+                      <option value="FIXED">Importo fisso</option>
+                      <option value="INTERVENTION">Intervento</option>
+                      <option value="PAGE">Pagina</option>
+                      <option value="SHIPMENT">Spedizione</option>
+                      <option value="BOX">Scatola</option>
+                    </NativeSelect>
+                  </Field>
+                  <Field label="Prezzo IVA inclusa" htmlFor="custom-service-price">
+                    <Input
+                      id="custom-service-price"
+                      value={customPrice}
+                      onChange={(event) => setCustomPrice(event.target.value)}
+                      inputMode="decimal"
+                    />
+                  </Field>
+                </div>
+              </div>
+              {selectedServicesPayload.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Nessun servizio aggiuntivo selezionato: puoi anche lasciarli vuoti e
+                  configurarli dopo sulla scheda cliente.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {selectedServicesPayload.length} servizi verranno attivati sul listino.
+                </p>
+              )}
+            </>
+          ) : null}
+
+          {currentStep === "Dati Comune" ? (
             <>
               <Field label="Determina" htmlFor="determina" error={fieldErrors.determina?.[0]}>
                 <Input
@@ -288,7 +432,7 @@ export function ClientForm({
                 />
               </Field>
               <Field
-                label="Importo impegno (€)"
+                label="Importo impegno (€) IVA inclusa"
                 htmlFor="commitmentAmount"
                 error={fieldErrors.commitmentAmount?.[0]}
               >
@@ -301,16 +445,24 @@ export function ClientForm({
             </>
           ) : null}
 
-          {step === lastStep && preview ? (
+          {currentStep === "Riepilogo" && preview ? (
             <div className="grid gap-3 text-sm">
               <SummaryRow label="Cliente" value={values.name || "—"} />
               <SummaryRow label="Tipologia" value={CLIENT_TYPE_LABELS[values.type]} />
               <SummaryRow label="Scatole" value={values.boxQuantity} />
               <SummaryRow
-                label="Prezzo"
+                label="Prezzo stoccaggio"
                 value={values.monthlyPricePerBox ? `€ ${values.monthlyPricePerBox}` : "—"}
               />
               <SummaryRow label="Periodicità" value={FREQUENCY_LABELS[values.billingFrequency]} />
+              <SummaryRow
+                label="Servizi a listino"
+                value={
+                  selectedServicesPayload.length > 0
+                    ? `${selectedServicesPayload.length} servizi`
+                    : "Solo stoccaggio"
+                }
+              />
               <SummaryRow
                 label="Periodo prima fattura"
                 value={`${formatItalianDate(preview.first.periodStart)} → ${formatItalianDate(preview.first.periodEnd)}`}
@@ -332,7 +484,8 @@ export function ClientForm({
               ) : null}
               {mode === "create" ? (
                 <p className="rounded-md bg-muted px-3 py-2 text-muted-foreground">
-                  Confermando, la prima fattura verrà registrata come già emessa.
+                  Confermando, la prima fattura di stoccaggio verrà registrata come già emessa
+                  e i servizi selezionati entreranno nel listino del cliente.
                 </p>
               ) : (
                 <p className="rounded-md bg-muted px-3 py-2 text-muted-foreground">

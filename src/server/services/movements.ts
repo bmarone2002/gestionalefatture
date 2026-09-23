@@ -33,7 +33,21 @@ export async function recordServiceMovement(rawInput: unknown, userId: string) {
       throw new Error("Servizio o contratto non attivo");
     }
     const quantity = money(input.quantity);
-    const unitPrice = input.unitPrice ? parseItalianDecimal(input.unitPrice) : null;
+    let unitPrice = input.unitPrice ? parseItalianDecimal(input.unitPrice) : null;
+    if (!unitPrice && !input.total) {
+      const listPrice = await tx.priceVersion.findFirst({
+        where: {
+          clientServiceId: clientService.id,
+          effectiveFrom: { lte: toPrismaDate(input.occurredOn) },
+          OR: [{ effectiveTo: null }, { effectiveTo: { gte: toPrismaDate(input.occurredOn) } }],
+        },
+        orderBy: { effectiveFrom: "desc" },
+      });
+      if (!listPrice) {
+        throw new Error("Prezzo listino non trovato: indicare un prezzo o un totale");
+      }
+      unitPrice = money(listPrice.unitPriceVatIncluded.toString());
+    }
     const total = input.total
       ? parseItalianDecimal(input.total)
       : roundEuro(quantity.mul(unitPrice!));

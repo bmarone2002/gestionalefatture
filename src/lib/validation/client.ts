@@ -31,6 +31,18 @@ export const clientFormSchema = z
     cig: optionalText,
     commitmentAmount: optionalText,
     active: z.boolean().optional(),
+    selectedServices: z
+      .array(
+        z.object({
+          serviceDefinitionId: z.string().optional(),
+          customName: z.string().trim().optional(),
+          unit: z.enum(["FIXED", "INTERVENTION", "PAGE", "SHIPMENT", "BOX"]).optional(),
+          unitPrice: z.string().trim().min(1, "Prezzo obbligatorio"),
+          billingFrequency: z.enum(["QUARTERLY", "SEMIANNUAL", "ANNUAL"]).optional(),
+        }),
+      )
+      .optional()
+      .default([]),
   })
   .superRefine((value, ctx) => {
     try {
@@ -49,6 +61,32 @@ export const clientFormSchema = z
         message: "Prezzo mensile non valido",
       });
     }
+
+    value.selectedServices?.forEach((service, index) => {
+      if (!service.serviceDefinitionId && !service.customName) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["selectedServices", index, "customName"],
+          message: "Indicare un servizio del catalogo o un nome personalizzato",
+        });
+      }
+      try {
+        const price = parseItalianDecimal(service.unitPrice);
+        if (price.isNegative()) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["selectedServices", index, "unitPrice"],
+            message: "Il prezzo non può essere negativo",
+          });
+        }
+      } catch {
+        ctx.addIssue({
+          code: "custom",
+          path: ["selectedServices", index, "unitPrice"],
+          message: "Prezzo non valido",
+        });
+      }
+    });
 
     if (value.type === "MUNICIPALITY") {
       if (!value.determina) {
